@@ -149,7 +149,7 @@
     lab='Atterrissage avant la paie';
     if(L.days<=0) sub='Paie attendue d’un jour à l’autre.';
     else sub='Au '+fmtDate(L.date)+', veille de la paie '+(L.payKnown?'programmée le '+fmtDate(L.payDate):'estimée au '+fmtDate(L.payDate)+(L.payMin!==L.payMax?' (versée entre le '+L.payMin+' et le '+L.payMax+' ces derniers mois)':''))+'.';
-    return landingHtml(lab,sub,L.value);
+    return landingHtml(lab,sub.replace(/\.\.+$/,'.'),L.value);
   }
   function landingHtml(lab,sub,v){ var L=D.proj.landing, open=!!S.landOpen&&!!L;
     return '<div class="card" style="padding:0;overflow:hidden"><button data-act="landtoggle" aria-expanded="'+open+'" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;width:100%;border:0;background:transparent;text-align:left;color:inherit;font-family:inherit;cursor:pointer"><div style="min-width:0"><div class="muted" style="font-size:13px">'+esc(lab)+'</div><div class="muted" style="font-size:11.5px;line-height:1.35;margin-top:2px">'+esc(sub)+'</div></div><span style="font-size:20px;font-weight:600;color:var(--accent);white-space:nowrap">'+eur(v)+'</span></button>'+(open?landDetail(L):'')+'</div>'; }
