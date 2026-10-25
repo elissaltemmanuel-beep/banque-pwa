@@ -251,7 +251,7 @@
     var over=CATS.map(function(c){ return {c:c,over:c.spent-c.avg*ELAPSED,s:status(c)}; });
     out.watch=over.filter(function(x){return x.s.k!=='ok'&&x.over>MIN_EUR}).sort(function(a,b){return b.over-a.over}).slice(0,4);
     out.calm=over.filter(function(x){return x.c.avg>60&&x.over<-MIN_EUR}).sort(function(a,b){return a.over-b.over}).slice(0,3);
-    var monthOps=(D.ops||[]).filter(function(o){ return o[0].slice(0,7)===cur&&o[3]<0&&!/internes?/i.test(o[2]||'')&&!/^Virements$/.test(o[2]||''); }).sort(function(a,b){return a[3]-b[3]});
+    var monthOps=(D.ops||[]).filter(function(o){ return o[0].slice(0,7)===cur&&o[3]<0&&!/internes?/i.test(o[2]||'')&&o[2]!=='Famille et proches'; }).sort(function(a,b){return a[3]-b[3]});
     out.big=monthOps.slice(0,5);
     var subs=(D.subs&&D.subs.list||[]).filter(function(x){return x.active});
     out.subsNew=subs.filter(function(x){return x.nouveau&&!x.hausse}); out.subsUp=subs.filter(function(x){return x.hausse});
@@ -424,7 +424,7 @@
     '<div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="muted" style="font-size:13px;line-height:1.45">Quand un libellé contient ce texte, l\'opération est classée dans le poste choisi, pour le passé comme pour le futur.</div>'+
       '<label class="muted" style="font-size:12px" for="rmotif">Texte du libellé</label><input type="text" id="rmotif" value="'+esc(R.motif)+'" placeholder="ex. VIR SEPA NOM PRÉNOM" autocomplete="off" style="'+inputStyle()+'">'+
       '<label class="muted" style="font-size:12px" for="rposte">Poste</label><select id="rposte" style="'+inputStyle()+'"><option value="">Choisir…</option>'+names.map(function(n){return '<option value="'+esc(n)+'"'+(R.poste===n?' selected':'')+'>'+esc(n)+'</option>'}).join('')+'<option value="__new"'+(isNew?' selected':'')+'>Nouveau poste…</option></select>'+
-      (isNew?'<input type="text" id="rnew" value="'+esc(R.nouveau)+'" placeholder="Nom du nouveau poste (ex. Crédit maison)" autocomplete="off" style="'+inputStyle()+'">':'')+
+      (isNew?'<input type="text" id="rnew" value="'+esc(R.nouveau)+'" placeholder="Nom du nouveau poste" autocomplete="off" style="'+inputStyle()+'">':'')+
       '<label class="muted" style="font-size:12px" for="rsous">Sous-poste (facultatif)</label><input type="text" id="rsous" value="'+esc(R.sous||'')+'" placeholder="ex. Coiffeur" autocomplete="off" style="'+inputStyle()+'">'+
       '<label class="muted" style="font-size:12px" for="rmont">Montant exact en € (facultatif)</label><input type="text" id="rmont" inputmode="decimal" value="'+esc(R.montant||'')+'" placeholder="ex. 900" autocomplete="off" style="'+inputStyle()+'">'+
       '<button class="fbtn" data-act="rulesave"'+(S.ruleBusy?' disabled':'')+'>'+(S.ruleBusy?'Enregistrement…':'Ajouter la règle')+'</button>'+(S.ruleErr?'<div class="badt" style="font-size:12px">'+esc(S.ruleErr)+'</div>':'')+'</div>'+

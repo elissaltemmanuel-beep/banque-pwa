@@ -12,7 +12,7 @@ var COLS = ['date', 'date_valeur', 'libelle', 'tags', 'libelle_suggere', 'catego
 // Revenus : catégories parentes dont les montants positifs sont des entrées d'argent.
 // Un montant positif dans une autre catégorie (hors mouvements internes) est un
 // remboursement : il vient en déduction du poste.
-var INCOME_PARENTS = ['Virements reçus', 'Revenus du travail', "Dépenses d'épargne"];
+var INCOME_PARENTS = ['Virements reçus', 'Revenus du travail', "Dépenses d'épargne", 'Revenus exceptionnels'];
 var INTERNAL_RE = /mouvements?\s+internes?/i;
 
 var MOIS_LONGS_ = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août',
@@ -126,11 +126,55 @@ function mergeIncremental(existing, incoming, todayIso, overlapDays) {
 
 var DEFAULT_RULES_ = [
   { re: /\b(DGFIP|FINANCES PUBLIQUES|TRESOR PUBLIC|IMPOTS?)\b/, poste: 'Impôts & Taxes' },
-  { re: /\b(BOULANGERIE|PATISSERIE|BOUCHERIE|FROMAGERIE|SUPERETTE|SUPERMARCHE|EPICERIE|MARCHE)\b/, poste: 'Vie quotidienne', sous: 'Alimentation' },
+  { re: /\b(BOULANGERIE|PATISSERIE|BOUCHERIE|FROMAGERIE|SUPERETTE|SUPERMARCHE|EPICERIE|MARCHE)\b/, poste: 'Alimentation', sous: 'Boulangerie' },
   { re: /\b(RESTO|RESTAURANT|BRASSERIE|BISTRO|PIZZERIA|PIZZA|SUSHI|CAFE|COFFEE|BAR|PUB|TRATTORIA)\b/, poste: 'Loisirs et sorties', sous: 'Restaurants et bars' },
   { re: /\b(CLUB|BOOTCAMP|BOOT CAMP|FITNESS|CINEMA|THEATRE|CONCERT|FESTIVAL|BILLETTERIE|MUSEE)\b/, poste: 'Loisirs et sorties', sous: 'Sorties et culture' },
   { re: /\b(PHARMACIE|PHARM|DOCTOLIB|DENTISTE|OPTIQUE|LABORATOIRE|LABO)\b/, poste: 'Santé' }
 ];
+
+/**
+ * Grands postes : regroupe les catégories de la banque (propres à BoursoBank, donc sans donnée
+ * personnelle) en 10 postes. Les règles par libellé de l'utilisateur passent avant.
+ */
+var TAXO_ = [
+  [/^ALIMENTATION$/, 'Alimentation', 'Courses'],
+  [/^ENERGIE/, 'Logement', 'Énergie'],
+  [/^ASSURANCE HABITATION/, 'Logement', 'Assurance habitation'],
+  [/^LIVRES CD DVD/, 'Shopping et équipement', 'Livres et loisirs'],
+  [/^ELECTRONIQUE/, 'Shopping et équipement', 'Électronique'],
+  [/^VETEMENTS/, 'Shopping et équipement', 'Vêtements'],
+  [/^(BRICOLAGE|MOBILIER)/, 'Shopping et équipement', 'Maison, déco et bricolage'],
+  [/^EQUIPEMENTS SPORTIFS/, 'Shopping et équipement', 'Équipements sportifs et artistiques'],
+  [/^(VIE QUOTIDIENNE|VIE QUOTIDIENNE AUTRES)$/, 'Shopping et équipement', 'Autres achats'],
+  [/^BIEN ETRE/, 'Divers', 'Coiffeur et soins'],
+  [/^TABAC/, 'Divers', 'Tabac'],
+  [/^RESTAURANTS/, 'Loisirs et sorties', 'Restaurants et bars'],
+  [/^DIVERTISSEMENT/, 'Loisirs et sorties', 'Sorties et culture'],
+  [/^CLUB/, 'Loisirs et sorties', 'Sport et associations'],
+  [/^DEPENSES JEUX/, 'Loisirs et sorties', 'Jeux'],
+  [/^LOISIRS/, 'Loisirs et sorties', 'Autres loisirs'],
+  [/^(HEBERGEMENT|AGENCES DE VOYAGES|LOCATION DE VEHICULES)/, 'Transports et voyages', 'Voyages et hébergement'],
+  [/^TAXIS/, 'Transports et voyages', 'Taxis'],
+  [/^TRANSPORTS LONGUE/, 'Transports et voyages', 'Train et avion'],
+  [/^TRANSPORTS QUOTIDIENS/, 'Transports et voyages', 'Transports du quotidien'],
+  [/^VOYAGES TRANSPORTS/, 'Transports et voyages', 'Autres transports'],
+  [/^MULTIMEDIA/, 'Abonnements et télécoms', 'Internet et TV'],
+  [/^TELEPHONIE/, 'Abonnements et télécoms', 'Mobile'],
+  [/^JOURNAUX/, 'Abonnements et télécoms', 'Presse'],
+  [/^ABONNEMENTS/, 'Abonnements et télécoms', 'Autres abonnements'],
+  [/^(ASSURANCES AUTO|CARBURANT|ENTRETIEN|PARKING|PEAGES|AUTO MOTO)/, 'Divers', 'Auto et moto'],
+  [/^DONS ET CADEAUX/, 'Divers', 'Cadeaux et dons'],
+  [/^(ETUDES|EDUCATION)/, 'Divers', 'Éducation'],
+  [/^REMBOURSEMENT DE FRAIS/, 'Revenus exceptionnels', 'Offres bancaires'],
+  [/^SERVICES/, 'Divers', 'Services'],
+  [/^AUTRES DEPENSES/, 'Divers', 'Autres']
+];
+
+function taxo_(cat) {
+  var k = norm_(cat);
+  for (var i = 0; i < TAXO_.length; i++) if (TAXO_[i][0].test(k)) return TAXO_[i];
+  return null;
+}
 
 /** Majuscules, sans accents ni ponctuation : sert à comparer un libellé à un motif. */
 function norm_(s) {
@@ -155,12 +199,17 @@ function applyRules_(rows, rules) {
         c = r.slice(); c[6] = user[i].poste; c[5] = user[i].sous || user[i].poste; return c;
       }
     }
-    if (r[6] === 'Virements émis') { c = r.slice(); c[6] = 'Virements'; c[5] = r[5] === 'Virements émis' ? 'Virements' : r[5]; return c; }
-    if (!r[6] || /non\s*cat/i.test(r[6])) {
+    var par = r[6] || '', cat = r[5] || '';
+    if (INCOME_PARENTS.indexOf(par) > -1 || INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) return r;
+    if (par === 'Virements émis') { c = r.slice(); c[6] = 'Famille et proches'; c[5] = 'Virements'; return c; }
+    if (!par || /non\s*cat/i.test(par)) {
       for (i = 0; i < DEFAULT_RULES_.length; i++) {
-        if (DEFAULT_RULES_[i].re.test(hay.trim())) { c = r.slice(); c[6] = DEFAULT_RULES_[i].poste; c[5] = DEFAULT_RULES_[i].sous || (r[5] && !/non\s*cat/i.test(r[5]) ? r[5] : c[6]); return c; }
+        if (DEFAULT_RULES_[i].re.test(hay.trim())) { c = r.slice(); c[6] = DEFAULT_RULES_[i].poste; c[5] = DEFAULT_RULES_[i].sous || (cat && !/non\s*cat/i.test(cat) ? cat : c[6]); return c; }
       }
+      return r;
     }
+    var t = taxo_(cat);
+    if (t) { c = r.slice(); c[6] = t[1]; c[5] = t[2]; return c; }
     return r;
   });
 }
@@ -231,7 +280,7 @@ function aggregate(rows, todayIso, opts) {
     }
     var dd = +date.slice(8, 10), depV = 0, revV = 0;
     if (INCOME_PARENTS.indexOf(par) > -1) {
-      if (amt > 0) { revV = amt; if (amt >= 1500 && !salaryRe.test(r[2])) revExc[mk] = (revExc[mk] || 0) + amt; } else depV = -amt;
+      if (amt > 0) { revV = amt; if ((amt >= 1500 && !salaryRe.test(r[2])) || par === 'Revenus exceptionnels') revExc[mk] = (revExc[mk] || 0) + amt; } else depV = -amt;
     } else {
       depV = -amt;
       bump(spend, par, mk, -amt);
@@ -368,7 +417,7 @@ function aggregate(rows, todayIso, opts) {
     }
     if (date >= win12) {
       if (-amt >= 100) { var dk = date + '|' + key + '|' + amt; (dupMap[dk] = dupMap[dk] || { d: date, l: r[4] || r[2], a: amt, n: 0 }).n++; }
-      if (par !== 'Virements' && par !== 'Crédit maison' && !/imp[oô]ts/i.test(par) && key) {
+      if (par !== 'Famille et proches' && cat !== 'Crédit maison' && !/imp[oô]ts/i.test(par) && key) {
         var mk2 = String(r[4] || key).toLowerCase(), mm = merch[mk2] || (merch[mk2] = { n: r[4] || key, s: 0, c: 0 });
         mm.s += -amt; mm.c++;
       }
@@ -382,7 +431,7 @@ function aggregate(rows, todayIso, opts) {
 
   var salVals = Object.keys(salaryByMonth).filter(function (k2) { return k2 < cur; }).sort().slice(-6).map(function (k2) { return salaryByMonth[k2]; });
   var salaryMonthly = salVals.length ? Math.round(median_(salVals)) : 0;
-  var creditSub = subsRes.list.filter(function (x) { return x.active && /cr[ée]dit/i.test(x.par); })[0];
+  var creditSub = subsRes.list.filter(function (x) { return x.active && /cr[ée]dit/i.test(x.par + ' ' + x.c); })[0];
   var d3 = 0, n3 = 0;
   for (i = 1; i <= 3; i++) { var k3 = shiftMonth_(cur, -i); d3 += dep[k3] || 0; n3 += daysInMonth_(+k3.slice(0, 4), +k3.slice(5, 7)); }
   var dailySpend = n3 ? d3 / n3 : 0;
@@ -550,7 +599,7 @@ function detectSubscriptions_(rows, todayIso) {
     if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat) || INCOME_PARENTS.indexOf(par) > -1) return;
     var k = subKey_(r[2]);
     if (!k) return;
-    (groups[k] = groups[k] || []).push({ d: date, a: -amt, n: r[4] || r[2], p: par || 'Non catégorisé' });
+    (groups[k] = groups[k] || []).push({ d: date, a: -amt, n: r[4] || r[2], p: par || 'Non catégorisé', c: cat });
   });
   var list = [];
   Object.keys(groups).forEach(function (k) {
@@ -577,7 +626,7 @@ function detectSubscriptions_(rows, todayIso) {
     var nm = shiftMonth_(last.d.slice(0, 7), 1);
     var next = nm + '-' + pad2_(Math.min(+last.d.slice(8, 10), daysInMonth_(+nm.slice(0, 4), +nm.slice(5, 7))));
     list.push({
-      k: k, n: last.n, amt: round2_(amt), par: last.p, last: last.d, next: next, count: g.length,
+      k: k, n: last.n, amt: round2_(amt), par: last.p, c: last.c, last: last.d, next: next, count: g.length,
       since: g[0].d, active: daysBetween_(last.d, todayIso) <= 45, hausse: hausse,
       nouveau: g[0].d >= addDays_(todayIso, -100)
     });
