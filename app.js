@@ -37,7 +37,8 @@
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent);
       return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,
       subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all}; })}; }); }
-  function setData(d){ D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
+  function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
+    D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
     if(over<MIN_EUR) return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'};
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
