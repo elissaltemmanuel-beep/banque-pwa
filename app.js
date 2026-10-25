@@ -1,11 +1,11 @@
 (function(){
   'use strict';
   var TOL=0.15, MIN_EUR=20, D=null, DAY=1, DAYS=30, ELAPSED=0, CATS=[];
-  var S={tab:'home',open:null,hide:false,q:'',view:'ecarts',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
+  var S={tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
   function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12'}; }
   S.f=fcopy();
-  try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view) S.view=pr.view; if(pr.per) S.per=pr.per; }catch(e){}
-  function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view:S.view,per:S.per})); }catch(e){} }
+  try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view2) S.view=pr.view2; if(pr.per) S.per=pr.per; }catch(e){}
+  function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view2:S.view,per:S.per})); }catch(e){} }
   document.documentElement.setAttribute('data-theme',S.theme);
   var app=document.getElementById('app');
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
