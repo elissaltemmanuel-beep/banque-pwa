@@ -1,11 +1,11 @@
 (function(){
   'use strict';
   var TOL=0.15, MIN_EUR=20, D=null, DAY=1, DAYS=30, ELAPSED=0, CATS=[];
-  var S={tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
+  var S={margin:500,tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
   function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12',exc:'excl'}; }
   S.f=fcopy();
-  try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view2) S.view=pr.view2; if(pr.per) S.per=pr.per; }catch(e){}
-  function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view2:S.view,per:S.per})); }catch(e){} }
+  try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view2) S.view=pr.view2; if(pr.per) S.per=pr.per; if(pr.margin!=null) S.margin=+pr.margin; }catch(e){}
+  function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view2:S.view,per:S.per,margin:S.margin})); }catch(e){} }
   document.documentElement.setAttribute('data-theme',S.theme);
   var app=document.getElementById('app');
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -254,6 +254,7 @@
   function analyseScreen(){ var A=analysisData(), h=[];
     var pct=A.prevSame>0? Math.round((A.depNow/A.prevSame-1)*100) : null;
     h.push('<button class="back" data-act="subclose">'+ico(I.back)+'Plus</button><h1 style="font-size:26px">Analyse du mois</h1><p class="muted" style="font-size:13px;margin:-8px 0 0">'+esc(A.month)+' · jour '+DAY+' sur '+DAYS+'</p>');
+    // reste à dépenser (après le bilan)
     // 1. bilan
     h.push(sect('Où vous en êtes',
       aline('Dépensé à ce jour',eur(A.depNow))+
@@ -263,6 +264,14 @@
       aline('Projection de dépenses en fin de mois',eur(A.proj))+
       (A.avgDep>0?'<div class="muted" style="font-size:12px;line-height:1.4">Vos 12 derniers mois : '+eur(A.avgDep)+' de dépenses en moyenne par mois.</div>':''),
       A.avgDep>0&&A.proj>A.avgDep*1.15?['bad','Au-dessus de la moyenne']:A.avgDep>0&&A.proj<A.avgDep*0.9?['ok','En dessous de la moyenne']:['ok','Dans la moyenne']));
+    // reste à dépenser par jour
+    if(A.land&&A.land.payDate){ var Lq=A.land, pd=daysBetween(D.today.iso,Lq.payDate), dN=Math.max(pd,1), solE=D.solde-(Lq.perDay||0)*(Lq.exportAge||0), av=solE+Lq.futSum-S.margin, pdj=av/dN, usual=D.kpi?D.kpi.daily:0;
+      h.push(sect('Reste à dépenser par jour',
+        '<div style="font-size:30px;font-weight:600;letter-spacing:-.02em;color:'+(pdj<0?'var(--bad)':'var(--accent)')+'">'+eur(Math.max(pdj,0))+' <span class="muted" style="font-size:14px;font-weight:500">par jour</span></div>'+
+        '<div class="muted" style="font-size:12.5px;line-height:1.45">Jusqu\'à la paie estimée du '+esc(fmtDate(Lq.payDate))+' ('+dN+' jour'+(dN>1?'s':'')+'), en tenant compte de '+eur(-Lq.futSum)+' de dépenses déjà programmées et en gardant '+eur(S.margin)+' de marge.'+(usual>0?' Votre rythme habituel est de '+eur(usual)+' par jour.':'')+'</div>'+
+        '<div class="row" style="margin-top:6px"><span class="muted" style="font-size:12.5px">Marge de sécurité</span><span style="display:flex;align-items:center;gap:8px"><button class="chip" data-act="margindn" style="cursor:pointer;padding:5px 12px" aria-label="Diminuer la marge">− 100</button><b style="min-width:62px;text-align:center">'+eur(S.margin)+'</b><button class="chip" data-act="marginup" style="cursor:pointer;padding:5px 12px" aria-label="Augmenter la marge">+ 100</button></span></div>',
+        usual>0?(pdj<usual*0.6?['warn','Plus serré que d\'habitude']:['ok','Dans vos moyens']):null));
+    }
     // indicateurs
     if(D.kpi){ var K=D.kpi, t=K.t12||{}, cour=(t.rev||0)-(t.revExc||0), depC=(t.dep||0)-(t.exc||0), rate=t.rev>0? Math.round((t.rev-t.dep)/t.rev*100) : null, rateC=cour>0? Math.round((cour-depC)/cour*100) : null;
       h.push(sect('Vos indicateurs',
@@ -460,6 +469,8 @@
     else if(el.dataset.aopen){S.tab='home';S.open=el.dataset.aopen;render();window.scrollTo(0,0)}
     else if(el.dataset.atab){S.tab=el.dataset.atab;S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='forceupdate'){ var jobs=[]; if(navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){return r.unregister()})); })); if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){return caches.delete(k)})); })); Promise.all(jobs).then(function(){ location.reload(); }); }
+    else if(el.dataset.act==='marginup'){S.margin=Math.min((S.margin||0)+100,5000);savePrefs();render()}
+    else if(el.dataset.act==='margindn'){S.margin=Math.max((S.margin||0)-100,0);savePrefs();render()}
     else if(el.dataset.act==='clearposte'){S.f.poste='';S.f.sous='';render()}
     else if(el.dataset.act==='alerts'){S.tab='alerts';S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='alertsclose'){S.tab='home';render();window.scrollTo(0,0)}
