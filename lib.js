@@ -191,7 +191,7 @@ function aggregate(rows, todayIso, opts) {
   var spend = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
   var depDay = {}, revDay = {};
   var yr = {}, ytdCut = todayIso.slice(5);
-  var upcP = {}, upcS = {};
+  var upcP = {}, upcS = {}, sav = {}, revExc = {}, excM = {};
   var futurs = 0, futursList = [], salaryByMonth = {}, salaryFirstDay = {}, salaryThisMonth = false, futureSalary = null;
   var card90 = 0, win90 = addDays_(todayIso, -90);
   var solde = null, lastRealDate = null, internalCount = 0, presumed = 0;
@@ -223,7 +223,7 @@ function aggregate(rows, todayIso, opts) {
     lastRealDate = date;
     lastBal[mk] = solde;
     dailyBal[date] = solde;
-    if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) { internalCount++; return; }
+    if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) { internalCount++; sav[mk] = (sav[mk] || 0) - amt; return; }
     if (salaryRe.test(r[2]) && amt > 0) {
       salaryByMonth[mk] = (salaryByMonth[mk] || 0) + amt;
       if (!(mk in salaryFirstDay)) salaryFirstDay[mk] = +date.slice(8, 10);
@@ -231,7 +231,7 @@ function aggregate(rows, todayIso, opts) {
     }
     var dd = +date.slice(8, 10), depV = 0, revV = 0;
     if (INCOME_PARENTS.indexOf(par) > -1) {
-      if (amt > 0) revV = amt; else depV = -amt;
+      if (amt > 0) { revV = amt; if (amt >= 1500 && !salaryRe.test(r[2])) revExc[mk] = (revExc[mk] || 0) + amt; } else depV = -amt;
     } else {
       depV = -amt;
       bump(spend, par, mk, -amt);
@@ -348,6 +348,84 @@ function aggregate(rows, todayIso, opts) {
   var depEnd = round2_((dep[cur] || 0) + courantes + (futurs < 0 ? -futurs : 0));
   var revEnd = round2_((rev[cur] || 0) + salaryExpected + (futurs > 0 ? futurs : 0));
 
+  // ---- analyses : exceptionnel, doublons, commerçants, indicateurs, prévision à 30 jours
+  var subsRes = detectSubscriptions_(rows, todayIso);
+  var recurKeys = {}; subsRes.list.forEach(function (x) { recurKeys[x.k] = 1; });
+  var win12 = shiftMonth_(cur, -11) + '-01';
+  var excP = {}, excS = {}, excOps = [], dupMap = {}, merch = {};
+  rows.forEach(function (r) {
+    var date = r[0], amt = r[7];
+    if (date > todayIso || amt >= 0) return;
+    var par = r[6] || 'Non catégorisé', cat = r[5] || par, mk = date.slice(0, 7);
+    if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat) || INCOME_PARENTS.indexOf(par) > -1) return;
+    var key = subKey_(r[2]);
+    if (-amt >= 500 && !recurKeys[key]) {
+      bump(excP, par, mk, -amt);
+      if (!excS[par]) excS[par] = {};
+      bump(excS[par], cat, mk, -amt);
+      excM[mk] = (excM[mk] || 0) + (-amt);
+      if (date >= win12) excOps.push([date, r[4] || r[2], par, amt]);
+    }
+    if (date >= win12) {
+      if (-amt >= 100) { var dk = date + '|' + key + '|' + amt; (dupMap[dk] = dupMap[dk] || { d: date, l: r[4] || r[2], a: amt, n: 0 }).n++; }
+      if (par !== 'Virements' && par !== 'Crédit maison' && !/imp[oô]ts/i.test(par) && key) {
+        var mk2 = String(r[4] || key).toLowerCase(), mm = merch[mk2] || (merch[mk2] = { n: r[4] || key, s: 0, c: 0 });
+        mm.s += -amt; mm.c++;
+      }
+    }
+  });
+  var dups = Object.keys(dupMap).map(function (k2) { return dupMap[k2]; }).filter(function (x) { return x.n >= 2; })
+    .sort(function (a, b) { return a.a - b.a; }).slice(0, 6);
+  var merchants = Object.keys(merch).map(function (k2) { return { n: merch[k2].n, s: round2_(merch[k2].s), c: merch[k2].c }; })
+    .sort(function (a, b) { return b.s - a.s; }).slice(0, 8);
+  excOps.sort(function (a, b) { return a[3] - b[3]; });
+
+  var salVals = Object.keys(salaryByMonth).filter(function (k2) { return k2 < cur; }).sort().slice(-6).map(function (k2) { return salaryByMonth[k2]; });
+  var salaryMonthly = salVals.length ? Math.round(median_(salVals)) : 0;
+  var creditSub = subsRes.list.filter(function (x) { return x.active && /cr[ée]dit/i.test(x.par); })[0];
+  var d3 = 0, n3 = 0;
+  for (i = 1; i <= 3; i++) { var k3 = shiftMonth_(cur, -i); d3 += dep[k3] || 0; n3 += daysInMonth_(+k3.slice(0, 4), +k3.slice(5, 7)); }
+  var dailySpend = n3 ? d3 / n3 : 0;
+  var t12 = { rev: 0, dep: 0, revExc: 0, sav: 0, exc: 0, n: 0 };
+  for (i = 12; i >= 1; i--) {
+    var k4 = shiftMonth_(cur, -i);
+    if (k4 < firstK) continue;
+    t12.rev += rev[k4] || 0; t12.dep += dep[k4] || 0; t12.revExc += revExc[k4] || 0; t12.sav += sav[k4] || 0; t12.exc += excM[k4] || 0; t12.n++;
+  }
+  Object.keys(t12).forEach(function (k5) { t12[k5] = round2_(t12[k5]); });
+  var kpi = {
+    salary: salaryMonthly, fixed: subsRes.total, rest: round2_(salaryMonthly - subsRes.total),
+    credit: creditSub ? creditSub.amt : 0, effort: salaryMonthly && creditSub ? round2_(creditSub.amt / salaryMonthly) : null,
+    daily: round2_(dailySpend), treso: dailySpend > 0 && solde > 0 ? Math.round(solde / dailySpend) : null, t12: t12
+  };
+
+  var fDaily = card90 / 90, fBal = solde - fDaily * daysBetween_(cut, todayIso), fEnd = addDays_(todayIso, 30), fEvs = {}, fList = [];
+  function addEv(d, l, a, kind) { (fEvs[d] = fEvs[d] || []).push(a); fList.push({ d: d, l: l, a: round2_(a), k: kind || '' }); }
+  futursList.forEach(function (f) { if (f[0] > todayIso && f[0] <= fEnd) addEv(f[0], f[1], f[2], 'prog'); });
+  subsRes.list.forEach(function (x) {
+    if (!x.active) return;
+    var dN = x.last, guard = 0;
+    while (guard++ < 14) {
+      var nm2 = shiftMonth_(dN.slice(0, 7), 1);
+      dN = nm2 + '-' + pad2_(Math.min(+x.last.slice(8, 10), daysInMonth_(+nm2.slice(0, 4), +nm2.slice(5, 7))));
+      if (dN > todayIso) break;
+    }
+    if (dN > todayIso && dN <= fEnd) {
+      var dupe = futursList.some(function (f) { return subKey_(f[1]) === x.k && Math.abs(daysBetween_(f[0], dN)) <= 5; });
+      if (!dupe) addEv(dN, x.n, -x.amt, 'rec');
+    }
+  });
+  if (payIso && !payKnown && payIso > todayIso && payIso <= fEnd && salaryMonthly > 0) addEv(payIso, 'Paie estimée', salaryMonthly, 'pay');
+  var fPts = [], fLow = { d: todayIso, v: round2_(fBal) };
+  for (i = 0; i <= 30; i++) {
+    var dd = addDays_(todayIso, i);
+    if (i > 0) fBal -= fDaily;
+    (fEvs[dd] || []).forEach(function (a) { fBal += a; });
+    fPts.push(round2_(fBal));
+    if (fBal < fLow.v) fLow = { d: dd, v: round2_(fBal) };
+  }
+  var forecast = { start: todayIso, pts: fPts, low: fLow, events: fList.sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; }), daily: round2_(fDaily) };
+
   // 12 derniers mois (barres)
   var series = [], carryM = null;
   months.forEach(function (k) {
@@ -368,7 +446,7 @@ function aggregate(rows, todayIso, opts) {
     if (b == null) b = carryA;
     if (b == null) b = 0;
     carryA = b;
-    seriesAll.push({ k: k, bal: round2_(b), rev: round2_(rev[k] || 0), dep: round2_(dep[k] || 0) });
+    seriesAll.push({ k: k, bal: round2_(b), rev: round2_(rev[k] || 0), dep: round2_(dep[k] || 0), sav: round2_(sav[k] || 0), revExc: round2_(revExc[k] || 0), exc: round2_(excM[k] || 0) });
     var dimk = daysInMonth_(+k.slice(0, 4), +k.slice(5, 7)), bb = [], dd = [], rr = [];
     for (var dj = 1; dj <= dimk; dj++) {
       var isoj = k + '-' + pad2_(dj);
@@ -391,11 +469,12 @@ function aggregate(rows, todayIso, opts) {
         n: c, spent: round2_(subSpend[par][c][cur] || 0),
         hist: histKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); }),
         all: allKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); }),
-        upc: round2_((upcS[par] && upcS[par][c]) || 0)
+        upc: round2_((upcS[par] && upcS[par][c]) || 0),
+        exc: allKeys.map(function (k) { return round2_((excS[par] && excS[par][c] && excS[par][c][k]) || 0); })
       };
     }).filter(function (x) { return x.spent || x.hist.some(function (v) { return v; }); })
       .sort(function (a, b) { return b.spent - a.spent; });
-    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), upc: round2_(upcP[par] || 0), subs: subs, ops: [] });
+    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), upc: round2_(upcP[par] || 0), exc: allKeys.map(function (k) { return round2_((excP[par] && excP[par][k]) || 0); }), subs: subs, ops: [] });
   });
   cats.sort(function (a, b) { return b.spent - a.spent; });
   var catIdx = {};
@@ -427,7 +506,8 @@ function aggregate(rows, todayIso, opts) {
     seriesAll: seriesAll,
     daily: daily,
     cats: cats,
-    subs: detectSubscriptions_(rows, todayIso),
+    subs: subsRes,
+    kpi: kpi, forecast: forecast, excOps: excOps.slice(0, 8), dups: dups, merchants: merchants,
     bilan: bilan_(yr, y),
     ops: opsAll,
     stats: {
@@ -497,7 +577,7 @@ function detectSubscriptions_(rows, todayIso) {
     var nm = shiftMonth_(last.d.slice(0, 7), 1);
     var next = nm + '-' + pad2_(Math.min(+last.d.slice(8, 10), daysInMonth_(+nm.slice(0, 4), +nm.slice(5, 7))));
     list.push({
-      n: last.n, amt: round2_(amt), par: last.p, last: last.d, next: next, count: g.length,
+      k: k, n: last.n, amt: round2_(amt), par: last.p, last: last.d, next: next, count: g.length,
       since: g[0].d, active: daysBetween_(last.d, todayIso) <= 45, hausse: hausse,
       nouveau: g[0].d >= addDays_(todayIso, -100)
     });

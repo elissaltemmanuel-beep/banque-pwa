@@ -30,13 +30,13 @@
   function buildCats(){ var k=+S.f.moy, P_=per(), first=P_.idxs.length?P_.idxs[0]:0;
     ELAPSED=P_.cur? DAY/DAYS : 1;
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
-    function calc(all,hist,spentNow){
+    function calc(all,hist,spentNow,exc){
       if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
-      var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, prior=all.slice(Math.max(0,first-k),first).map(pos), am=prior.length? sum(prior)/prior.length : sum(all.map(pos))/Math.max(all.length,1);
+      var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
-    return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent);
+    return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,c.exc);
       return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm}; })}; }); }
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,s.exc); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
@@ -248,6 +248,7 @@
     var nc=CATS.filter(function(c){return /non\s*cat/i.test(c.n)})[0]; out.nc=nc&&nc.spent>0?nc.spent:0;
     out.land=L; out.sal=P.salary;
     return out; }
+  function cur_(){ return D.today.month; }
   function sect(t,body,k){ return '<div class="card" style="display:flex;flex-direction:column;gap:6px"><div class="row"><h3 style="font-size:15px">'+t+'</h3>'+(k?'<span class="badge '+k[0]+'">'+k[1]+'</span>':'')+'</div>'+body+'</div>'; }
   function aline(l,r,cls,attr){ return '<div class="row" style="font-size:13px;padding:5px 0;gap:10px'+(attr?';cursor:pointer':'')+'"'+(attr||'')+'><span style="min-width:0">'+l+'</span><b'+(cls?' class="'+cls+'"':'')+' style="white-space:nowrap">'+r+'</b></div>'; }
   function analyseScreen(){ var A=analysisData(), h=[];
@@ -262,11 +263,31 @@
       aline('Projection de dépenses en fin de mois',eur(A.proj))+
       (A.avgDep>0?'<div class="muted" style="font-size:12px;line-height:1.4">Vos 12 derniers mois : '+eur(A.avgDep)+' de dépenses en moyenne par mois.</div>':''),
       A.avgDep>0&&A.proj>A.avgDep*1.15?['bad','Au-dessus de la moyenne']:A.avgDep>0&&A.proj<A.avgDep*0.9?['ok','En dessous de la moyenne']:['ok','Dans la moyenne']));
+    // indicateurs
+    if(D.kpi){ var K=D.kpi, t=K.t12||{}, cour=(t.rev||0)-(t.revExc||0), depC=(t.dep||0)-(t.exc||0), rate=t.rev>0? Math.round((t.rev-t.dep)/t.rev*100) : null, rateC=cour>0? Math.round((cour-depC)/cour*100) : null;
+      h.push(sect('Vos indicateurs',
+        aline('Reste à vivre<div class="muted" style="font-size:11.5px">Salaire '+eur(K.salary)+' − charges récurrentes '+eur(K.fixed)+'</div>',eur(K.rest)+' / mois')+
+        (K.effort!=null?aline('Poids du crédit sur le salaire<div class="muted" style="font-size:11.5px">'+eur(K.credit)+' par mois · repère des banques : 35 %</div>',Math.round(K.effort*100)+' %',K.effort>0.35?'badt':K.effort>0.3?'warnt':'okt'):'')+
+        (K.treso!=null?aline('Trésorerie<div class="muted" style="font-size:11.5px">Solde de l\'export ÷ '+eur(K.daily)+' de dépenses par jour</div>',K.treso+' jours'):'')+
+        (rate!=null?aline('Taux d\'épargne sur 12 mois<div class="muted" style="font-size:11.5px">'+eur(t.rev)+' reçus − '+eur(t.dep)+' dépensés</div>',rate+' %',rate<0?'badt':''):'')+
+        (rateC!=null?aline('…hors primes et dépenses exceptionnelles<div class="muted" style="font-size:11.5px">'+eur(t.revExc||0)+' de revenus et '+eur(t.exc||0)+' de dépenses ponctuelles retirés</div>',rateC+' %',rateC<0?'badt':''):'')+
+        (t.sav>0?aline('Viré vers vos autres comptes<div class="muted" style="font-size:11.5px">Livret A et autres : l\'export correspondant manque pour suivre l\'épargne</div>',eur(t.sav)):'')));
+    }
     // 2. atterrissage
     if(A.land&&A.land.days>=0) h.push(sect('Atterrissage avant la paie',
       aline('Solde prévu le '+esc(fmtDate(A.land.date)),eur(A.land.value),A.land.value<0?'badt':A.land.value<300?'warnt':'')+
       '<div class="muted" style="font-size:12px;line-height:1.4">'+(A.sal&&A.sal.expected>0?'Paie estimée vers le '+A.sal.day+' (+'+eur(A.sal.expected)+').':'Paie du mois déjà reçue ou non repérée.')+(A.land.exportAge>1?' L\'export date de '+A.land.exportAge+' jours : déposez-en un récent.':'')+'</div>',
       A.land.value<0?['bad','Solde négatif prévu']:A.land.value<300?['warn','Serré']:null));
+    // prévision à 30 jours
+    if(D.forecast&&D.forecast.pts){ var F=D.forecast, pts_=F.pts, mn=Math.min.apply(null,pts_.concat([0])), mxv=Math.max.apply(null,pts_), rng=(mxv-mn)||1, W=330, H=80;
+      function fx(i){ return 10+i/(pts_.length-1)*W; } function fy(v){ return 6+(H-(v-mn)/rng*H); }
+      var line=pts_.map(function(v,i){return fx(i).toFixed(1)+','+fy(v).toFixed(1)}).join(' '), li=pts_.indexOf(F.low.v), pay=F.events.filter(function(e){return e.k==='pay'})[0];
+      var svg='<svg viewBox="0 0 350 100" width="100%" role="img" aria-label="Solde prévu sur 30 jours"><line x1="10" x2="340" y1="'+fy(0).toFixed(1)+'" y2="'+fy(0).toFixed(1)+'" stroke="var(--rim-soft)" stroke-dasharray="2 4"/><polyline points="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'+(li>=0?'<circle cx="'+fx(li).toFixed(1)+'" cy="'+fy(F.low.v).toFixed(1)+'" r="4" fill="var(--bad)" stroke="var(--bg)" stroke-width="2"/>':'')+'<text x="10" y="98" fill="var(--muted)" font-size="10">aujourd\'hui</text><text x="340" y="98" fill="var(--muted)" font-size="10" text-anchor="end">+30 j</text></svg>';
+      h.push(sect('Prévision à 30 jours',
+        aline('Point le plus bas',eur(F.low.v)+' · '+esc(fmtDate(F.low.d)),F.low.v<0?'badt':F.low.v<300?'warnt':'')+svg+
+        F.events.slice(0,7).map(function(e){ return '<div class="row muted" style="font-size:12px;padding:2px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(fmtDate(e.d))+' · '+esc(e.l.replace(/^(Carte|Prlv Sepa|Vir Sepa|Vir Inst)\s*(\d{2}\/\d{2}\/\d{2}\s*)?/i,''))+'</span><span class="'+(e.a<0?'':'okt')+'">'+(e.a>0?'+':'')+eur(e.a)+'</span></div>'; }).join('')+
+        '<div class="muted" style="font-size:11.5px;line-height:1.4;margin-top:4px">Sur la base de vos opérations programmées, de vos prélèvements récurrents, de la paie estimée'+(pay?' (vers le '+esc(fmtDate(pay.d))+')':'')+' et de '+eur(F.daily)+' de dépenses par jour.</div>'));
+    }
     // 3. à surveiller
     h.push(sect('À surveiller',
       A.watch.length? A.watch.map(function(x){ return aline(esc(x.c.n)+'<div class="muted" style="font-size:11.5px">'+eur(x.c.spent)+' dépensés · rythme attendu '+eur(x.c.avg*ELAPSED)+(x.c.upc>0?' · dont '+eur(x.c.upc)+' à venir':'')+'</div>','+'+eur(x.over),x.s.k==='bad'?'badt':'warnt',' data-aopen="'+esc(x.c.id)+'"'); }).join('')
@@ -276,11 +297,22 @@
     if(A.calm.length) h.push(sect('Plus bas que d\'habitude',A.calm.map(function(x){ return aline(esc(x.c.n)+'<div class="muted" style="font-size:11.5px">'+eur(x.c.spent)+' dépensés · rythme attendu '+eur(x.c.avg*ELAPSED)+'</div>','−'+eur(-x.over),'okt',' data-aopen="'+esc(x.c.id)+'"'); }).join(''),['ok','En avance sur le budget']));
     // 5. plus grosses dépenses
     if(A.big.length) h.push(sect('Plus grosses dépenses du mois',A.big.map(function(o){ return aline(esc(o[1])+'<div class="muted" style="font-size:11.5px">'+esc(fmtDate(o[0]))+(o[4]?' · à venir':'')+' · '+esc(o[2])+'</div>','−'+eur(-o[3],true)); }).join('')));
+    // à vérifier : doublons et dépenses exceptionnelles
+    var chk=[];
+    (D.dups||[]).forEach(function(d){ chk.push(aline('Paiement identique ×'+d.n+' le '+esc(fmtDate(d.d))+'<div class="muted" style="font-size:11.5px">'+esc(d.l)+' · doublon possible ?</div>','−'+eur(-d.a*d.n,true),'warnt')); });
+    if((D.excOps||[]).length){ chk.push('<div class="muted" style="font-size:12px;margin-top:6px">Dépenses ponctuelles de 12 mois (exclues de vos moyennes) :</div>'); D.excOps.slice(0,5).forEach(function(o){ chk.push(aline(esc(o[1])+'<div class="muted" style="font-size:11.5px">'+esc(fmtDate(o[0]))+' · '+esc(o[2])+'</div>','−'+eur(-o[3],true))); }); }
+    if(chk.length) h.push(sect('À vérifier',chk.join(''),(D.dups||[]).length?['warn',(D.dups.length)+' doublon'+(D.dups.length>1?'s':'')+' possible'+(D.dups.length>1?'s':'')]:null));
     // 6. abonnements
     var sb=[]; A.subsNew.forEach(function(x){ sb.push(aline('Nouveau : '+esc(x.n),eur(x.amt,true)+' / mois','warnt')); }); A.subsUp.forEach(function(x){ sb.push(aline('Hausse : '+esc(x.n),eur(x.hausse.from,true)+' → '+eur(x.hausse.to,true),'warnt')); });
     if(A.subsLeft.length) sb.push(aline(A.subsLeft.length+' prélèvement'+(A.subsLeft.length>1?'s':'')+' récurrent'+(A.subsLeft.length>1?'s':'')+' encore attendu'+(A.subsLeft.length>1?'s':'')+' ce mois-ci',eur(sum(A.subsLeft.map(function(x){return x.amt})),true)));
     sb.push('<div class="muted" style="font-size:12px">Total des abonnements actifs : '+eur(A.subsTotal)+' par mois.</div>');
     h.push(sect('Abonnements',sb.join(''),A.subsNew.length||A.subsUp.length?['warn',(A.subsNew.length+A.subsUp.length)+' à vérifier']:null));
+    // commerçants et comparaison
+    if((D.merchants||[]).length) h.push(sect('Où part votre argent (12 mois)',D.merchants.map(function(m){ return aline(esc(m.n)+'<div class="muted" style="font-size:11.5px">'+m.c+' achat'+(m.c>1?'s':'')+'</div>',eur(m.s)); }).join('')));
+    var sa=D.seriesAll||[], ly=prevKey(cur_(),-12), lyS=sa.filter(function(x){return x.k===ly})[0], done=sa.filter(function(x){return x.k<cur_()}).slice(-12), top3=done.slice().sort(function(a,b){return b.dep-a.dep}).slice(0,3);
+    if(lyS||top3.length) h.push(sect('Repères dans l\'année',
+      (lyS?aline('Dépenses de '+esc(MOIS_L[+ly.slice(5,7)-1])+' '+ly.slice(0,4),eur(lyS.dep))+aline('Projection de ce mois','≈ '+eur(A.proj),A.proj>lyS.dep*1.15?'badt':'')+'':'')+
+      (top3.length?'<div class="muted" style="font-size:12px;margin-top:6px">Mois les plus chers sur 12 mois :</div>'+top3.map(function(x){ return aline(esc(MOIS_L[+x.k.slice(5,7)-1])+' '+x.k.slice(0,4),eur(x.dep)); }).join(''):'')));
     // 7. à classer
     if(A.nc>0) h.push(sect('À classer',aline('Opérations non catégorisées ce mois-ci',eur(A.nc))+'<button class="fbtn ghost" data-sub="rules" style="width:100%">Ouvrir les règles</button>',['warn','À classer']));
     h.push('<p class="note">Analyse factuelle de vos propres chiffres, sans conseil financier.</p>');
