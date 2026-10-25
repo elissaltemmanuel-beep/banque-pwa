@@ -269,6 +269,7 @@
     var pct=A.prevSame>0? Math.round((A.depNow/A.prevSame-1)*100) : null;
     h.push('<button class="back" data-act="subclose">'+ico(I.back)+'Plus</button><h1 style="font-size:26px">Analyse du mois</h1><p class="muted" style="font-size:13px;margin:-8px 0 0">'+esc(A.month)+' · jour '+DAY+' sur '+DAYS+'</p>');
     // reste à dépenser (après le bilan)
+    if(!D.kpi||!D.forecast||!D.daily) h.push(sect('Analyses incomplètes','<div class="muted" style="font-size:13px;line-height:1.45">L\'appli affiche encore d\'anciens chiffres gardés en mémoire : plusieurs analyses (indicateurs, prévision, calendrier, carte de chaleur…) ne peuvent pas s\'afficher. Appuyez sur Actualiser pour les recalculer depuis votre Drive.</div><button class="fbtn" data-act="refresh" style="width:100%">Actualiser maintenant</button>',['warn','Données anciennes']));
     // 1. bilan
     h.push(sect('Où vous en êtes',
       aline('Dépensé à ce jour',eur(A.depNow))+
