@@ -22,6 +22,9 @@
   function avgOf(h,k){ var a=h.slice(-k); return a.length? a.reduce(function(s,v){return s+v},0)/a.length : 0; }
   var MOIS_INITIALES=['J','F','M','A','M','J','J','A','S','O','N','D'];
   var MOIS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function kfmt(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
+  function addIso(iso,n){ var p=iso.split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n)).toISOString().slice(0,10); }
+  var PALETTE=['var(--accent)','var(--c2)','var(--ok)','var(--warn)','var(--bad)','var(--c1)','var(--neu)','var(--muted)'];
   function sum(arr){ return arr.reduce(function(s,v){return s+v},0); }
   /* période choisie dans les filtres : un mois (par défaut le mois en cours) ou une année entière */
   function per(){ var keys=(D&&D.keys)||[], curK=D?D.today.month:'', cy=curK.slice(0,4), cm=curK.slice(5,7), y=S.f.year||cy, mo=S.f.month||cm, isYear=mo==='all', key=y+'-'+mo, idxs=[];
@@ -86,10 +89,16 @@
       if(ecarts){ w=Math.min(Math.abs(x.gap)/45,1)*50; return '<span class="strack"><span class="axis"></span><i class="'+x.k+'" style="'+(x.pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i></span>'; }
       return '<span class="strack"><i class="'+x.k+'" style="left:0" data-w="'+(Math.min(x.pct,130)/130*100)+'"></i><span class="tick" style="left:'+(100/130*100)+'%"></span></span>'; }
     var items=cats.map(info), body;
+    var donut=!sub&&S.postView==='anneau';
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
     else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'<small class="muted" style="display:block;font-size:10.5px;font-weight:500">moy. '+eur(x.c.avgm||0)+' / mois</small></span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
+    if(donut&&items.length){ var pool2=items.filter(function(x){return x.c.spent>0}).sort(function(p,q){return q.c.spent-p.c.spent}), tot=sum(pool2.map(function(x){return x.c.spent})), top=pool2.slice(0,7), rest=pool2.slice(7), restV=sum(rest.map(function(x){return x.c.spent}));
+      var slices=top.map(function(x,n){return {n:x.c.n,v:x.c.spent,id:x.c.id,col:PALETTE[n]}}); if(restV>0) slices.push({n:'Autres ('+rest.length+')',v:restV,id:'',col:PALETTE[7]});
+      var R=56,CIR=2*Math.PI*R,off=0, arcs=slices.map(function(s){ var len=s.v/tot*CIR, e='<circle cx="80" cy="80" r="'+R+'" fill="none" stroke="'+s.col+'" stroke-width="22" stroke-dasharray="'+Math.max(len-1.5,0.5).toFixed(2)+' '+(CIR-Math.max(len-1.5,0.5)).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 80 80)"/>'; off+=len; return e; }).join('');
+      body='<svg viewBox="0 0 160 160" width="170" height="170" role="img" aria-label="Répartition des dépenses par poste" style="align-self:center"><circle cx="80" cy="80" r="'+R+'" fill="none" stroke="var(--track)" stroke-width="22"/>'+arcs+'<text x="80" y="76" text-anchor="middle" fill="var(--muted)" font-size="9">Total</text><text x="80" y="94" text-anchor="middle" fill="var(--text)" font-size="15" font-weight="600">'+(S.hide?'••••':kfmt(tot)+' €')+'</text></svg>'+
+        slices.map(function(s){ var T2=s.id?'button':'div'; return '<'+T2+' class="srow" style="grid-template-columns:14px 1fr auto;gap:8px"'+(s.id?' data-open="'+esc(s.id)+'"':'')+'><i style="width:10px;height:10px;border-radius:3px;background:'+s.col+'"></i><span class="sname">'+esc(s.n)+'</span><span class="sval"><b>'+eur(s.v)+'</b><small class="muted">'+Math.round(s.v/tot*100)+' %</small></span></'+T2+'>'; }).join(''); }
     var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Le repère marque 100 % de la moyenne du poste. Triés du plus dépensé au moins dépensé.';
-    return '<div class="card syn"><div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
+    return '<div class="card syn">'+(sub?'':'<div class="seg sm" role="group" aria-label="Affichage des postes" style="align-self:flex-end;margin-bottom:6px"><button data-pv="barres" aria-pressed="'+(S.postView!=='anneau')+'">Barres</button><button data-pv="anneau" aria-pressed="'+(S.postView==='anneau')+'">Anneau</button></div>')+'<div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
       '<p class="gapl muted" style="text-align:center;margin:4px 0">'+(ecarts?'Rythme attendu au centre · à gauche en retard · à droite en avance':'Montant dépensé et % de la moyenne du poste')+'</p>'+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
       '<div class="gapl muted" style="margin-top:6px">'+cap+'</div></div>'; }
 
@@ -155,13 +164,14 @@
       } else {
         var isD=gr==='dep', arr=PR.cur?(isD?C.depCum:C.revCum):cum(isD?dm.d:dm.r,N), endV=PR.cur?(isD?P.depEnd:P.revEnd):arr[arr.length-1]||0, nowV=arr[nowD-1]||0, hab=[];
         if(isD){ if(PR.cur) hab=C.habit; else { var pk=(D.keys||[]).slice(Math.max(0,PR.idxs[0]-12),PR.idxs[0]).filter(function(k){return D.daily&&D.daily[k]}); for(var d0=0;d0<N;d0++){ var t=0; pk.forEach(function(k){ t+=cum(D.daily[k].d,d0+1).pop()||0; }); hab.push(pk.length? t/pk.length : 0); } } }
-        var mx3=niceCeil(Math.max(endV,nowV,maxOf(hab),1)), hN=hab[nowD-1]||0;
+        var prevL=[], pk0=prevKey(PR.key,-1); if(isD&&D.daily&&D.daily[pk0]) prevL=cum(D.daily[pk0].d,N);
+        var mx3=niceCeil(Math.max(endV,nowV,maxOf(hab),maxOf(prevL),1)), hN=hab[nowD-1]||0;
         if(isD&&hN>0&&PR.cur){ var pc=Math.round((nowV/hN-1)*100); badge='<span class="badge '+(pc>15?'bad':pc>5?'warn':'ok')+'">'+(pc>0?'+':'')+pc+' % vs rythme habituel</span>'; }
         sum_=(isD?'Dépenses cumulées : ':'Revenus cumulés : ')+eur(nowV)+(PR.cur?' au jour '+DAY:' sur le mois')+(isD&&hN>0?', contre '+eur(hN)+' en moyenne à cette date':'')+'.'+(PR.cur&&!isD&&P.salary.expected>0?' Salaire attendu vers le '+P.salary.day+' : +'+eur(P.salary.expected)+'.':'');
         aria=(isD?'Dépenses':'Revenus')+' cumulés du mois : '+Math.round(nowV)+' euros';
         var rp=PR.cur?(isD?[[DAY,nowV],[N,endV]]:(P.salary.expected>0?[[DAY,nowV],[Math.max(DAY,P.salary.day-1),nowV],[P.salary.day,endV],[N,endV]]:[[DAY,nowV],[N,endV]])):[];
-        svg=grid(mx3)+(isD&&hab.length?ln(pts(hab,mx3),'var(--muted)',1.6,'4 4'):'')+(PR.cur?ln(pp(rp,mx3),COL[gr],1.8,'2 4'):'')+ln(pts(arr,mx3),COL[gr],2.8)+dot(X(nowD-1).toFixed(1),Y(nowV,mx3),COL[gr])+days(PR.cur?DAY:0);
-        leg=lg(COL[gr],'',isD?'Dépenses':'Revenus')+(isD&&hab.length?lg('var(--muted)','4 4','Rythme habituel'):'')+(PR.cur?'<span>Pointillés : projection</span>':'');
+        svg=grid(mx3)+(isD&&hab.length?ln(pts(hab,mx3),'var(--muted)',1.6,'4 4'):'')+(prevL.length?ln(pts(prevL,mx3),'var(--warn)',1.6,'1 3'):'')+(PR.cur?ln(pp(rp,mx3),COL[gr],1.8,'2 4'):'')+ln(pts(arr,mx3),COL[gr],2.8)+dot(X(nowD-1).toFixed(1),Y(nowV,mx3),COL[gr])+days(PR.cur?DAY:0);
+        leg=lg(COL[gr],'',isD?'Dépenses':'Revenus')+(isD&&hab.length?lg('var(--muted)','4 4','Rythme habituel'):'')+(prevL.length?lg('var(--warn)','1 3',MOIS_L[+pk0.slice(5,7)-1].charAt(0).toUpperCase()+MOIS_L[+pk0.slice(5,7)-1].slice(1)):'')+(PR.cur?'<span>Pointillés : projection</span>':'');
       }
     }
     sum_=sum_.replace(/\.{2,}/g,'.');
@@ -269,7 +279,7 @@
       h.push(sect('Reste à dépenser par jour',
         '<div style="font-size:30px;font-weight:600;letter-spacing:-.02em;color:'+(pdj<0?'var(--bad)':'var(--accent)')+'">'+eur(Math.max(pdj,0))+' <span class="muted" style="font-size:14px;font-weight:500">par jour</span></div>'+
         '<div class="muted" style="font-size:12.5px;line-height:1.45">Jusqu\'à la paie estimée du '+esc(fmtDate(Lq.payDate))+' ('+dN+' jour'+(dN>1?'s':'')+'), en tenant compte de '+eur(-Lq.futSum)+' de dépenses déjà programmées et en gardant '+eur(S.margin)+' de marge.'+(usual>0?' Votre rythme habituel est de '+eur(usual)+' par jour.':'')+'</div>'+
-        '<div class="row" style="margin-top:6px"><span class="muted" style="font-size:12.5px">Marge de sécurité</span><span style="display:flex;align-items:center;gap:8px"><button class="chip" data-act="margindn" style="cursor:pointer;padding:5px 12px" aria-label="Diminuer la marge">− 100</button><b style="min-width:62px;text-align:center">'+eur(S.margin)+'</b><button class="chip" data-act="marginup" style="cursor:pointer;padding:5px 12px" aria-label="Augmenter la marge">+ 100</button></span></div>',
+        '<div class="row" style="margin-top:6px"><span class="muted" style="font-size:12.5px">Marge de sécurité</span><span style="display:flex;align-items:center;gap:8px"><button class="chip" data-act="margindn" style="cursor:pointer;padding:5px 12px;white-space:nowrap" aria-label="Diminuer la marge">−100</button><b style="min-width:62px;text-align:center">'+eur(S.margin)+'</b><button class="chip" data-act="marginup" style="cursor:pointer;padding:5px 12px;white-space:nowrap" aria-label="Augmenter la marge">+100</button></span></div>',
         usual>0?(pdj<usual*0.6?['warn','Plus serré que d\'habitude']:['ok','Dans vos moyens']):null));
     }
     // indicateurs
@@ -296,6 +306,16 @@
         aline('Point le plus bas',eur(F.low.v)+' · '+esc(fmtDate(F.low.d)),F.low.v<0?'badt':F.low.v<300?'warnt':'')+svg+
         F.events.slice(0,7).map(function(e){ return '<div class="row muted" style="font-size:12px;padding:2px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(fmtDate(e.d))+' · '+esc(e.l.replace(/^(Carte|Prlv Sepa|Vir Sepa|Vir Inst)\s*(\d{2}\/\d{2}\/\d{2}\s*)?/i,''))+'</span><span class="'+(e.a<0?'':'okt')+'">'+(e.a>0?'+':'')+eur(e.a)+'</span></div>'; }).join('')+
         '<div class="muted" style="font-size:11.5px;line-height:1.4;margin-top:4px">Sur la base de vos opérations programmées, de vos prélèvements récurrents, de la paie estimée'+(pay?' (vers le '+esc(fmtDate(pay.d))+')':'')+' et de '+eur(F.daily)+' de dépenses par jour.</div>'));
+    }
+    // calendrier des échéances
+    if(D.forecast&&D.forecast.events){ var FE=D.forecast.events, t0=D.today.iso, dow=(new Date(t0+'T00:00:00Z').getUTCDay()+6)%7, g0=addIso(t0,-dow), endC=addIso(t0,30), cells='', lab_=['L','M','M','J','V','S','D'].map(function(x){return '<div class="muted" style="font-size:10px;text-align:center">'+x+'</div>'}).join('');
+      for(var ci=0;ci<35;ci++){ var iso=addIso(g0,ci), evs=FE.filter(function(e){return e.d===iso}), outS=sum(evs.filter(function(e){return e.a<0}).map(function(e){return e.a})), inS=sum(evs.filter(function(e){return e.a>0}).map(function(e){return e.a})), inWin=iso>=t0&&iso<=endC, isT=iso===t0, sel=S.calDay===iso;
+        cells+='<'+(evs.length?'button data-cal="'+iso+'"':'div')+' style="min-height:46px;border-radius:12px;border:1px solid '+(sel?'var(--accent)':'var(--rim-soft)')+';background:'+(isT?'var(--glass2)':'var(--glass)')+';color:inherit;font-family:inherit;padding:3px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;opacity:'+(inWin?1:.38)+'"><span style="font-size:11px;font-weight:'+(isT?700:500)+'">'+(+iso.slice(8,10))+'</span>'+(outS<0?'<span class="badt" style="font-size:9.5px">'+(S.hide?'•':kfmt(outS))+'</span>':'')+(inS>0?'<span class="okt" style="font-size:9.5px">'+(S.hide?'•':'+'+kfmt(inS))+'</span>':'')+'</'+(evs.length?'button':'div')+'>'; }
+      var shown=S.calDay?FE.filter(function(e){return e.d===S.calDay}):FE.slice(0,6);
+      h.push(sect('Calendrier des échéances','<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+lab_+cells+'</div>'+
+        '<div class="muted" style="font-size:12px;margin-top:4px">'+(S.calDay?esc(fmtDate(S.calDay))+' :':'Prochaines échéances :')+'</div>'+
+        (shown.length?shown.map(function(e){ return aline(esc(fmtDate(e.d))+' · '+esc(e.l.replace(/^(Carte|Prlv Sepa|Vir Sepa|Vir Inst)\s*(\d{2}\/\d{2}\/\d{2}\s*)?/i,'')),(e.a>0?'+':'')+eur(e.a),e.a<0?'':'okt'); }).join(''):'<div class="muted" style="font-size:12.5px">Aucune échéance connue ce jour-là.</div>')+
+        '<div class="muted" style="font-size:11.5px;line-height:1.4">Sur 30 jours : opérations programmées, prélèvements récurrents détectés et paie estimée. Appuyez sur un jour pour le détail.</div>'));
     }
     // 3. à surveiller
     h.push(sect('À surveiller',
@@ -449,7 +469,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -465,6 +485,8 @@
     else if(el.dataset.act==='rulesave'){ var R=S.rule||{}, poste=R.poste==='__new'?String(R.nouveau||'').trim():R.poste, motif=String(R.motif||'').trim();
       if(!motif||!poste){ S.ruleErr='Indiquez le texte du libellé et le poste.'; render(); return; }
       S.ruleBusy=true; S.ruleErr=null; render(); authed('saveRules',[(D.rules||[]).concat([{motif:motif,poste:poste,sous:String(R.sous||'').trim(),montant:String(R.montant||'').replace(',','.').replace(/[^0-9.]/g,'')}])]).then(function(){ S.ruleBusy=false; S.rule={motif:'',poste:'',nouveau:'',sous:'',montant:''}; return load(true); }).catch(function(err){ S.ruleBusy=false; S.ruleErr=errMsg(err); render(); }) }
+    else if(el.dataset.pv){S.postView=el.dataset.pv;render()}
+    else if(el.dataset.cal){S.calDay=S.calDay===el.dataset.cal?'':el.dataset.cal;render()}
     else if(el.dataset.bar){ var bk=el.dataset.bar, ck=D.today.month; S.f.year=bk.slice(0,4)===ck.slice(0,4)?'':bk.slice(0,4); S.f.month=bk===ck?'':bk.slice(5,7); render(); }
     else if(el.dataset.aopen){S.tab='home';S.open=el.dataset.aopen;render();window.scrollTo(0,0)}
     else if(el.dataset.atab){S.tab=el.dataset.atab;S.open=null;render();window.scrollTo(0,0)}
