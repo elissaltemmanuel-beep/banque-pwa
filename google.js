@@ -121,8 +121,8 @@
     });
   }
   function readRules(id) {
-    return readRange(id, 'Regles!A2:C500').then(function (v) {
-      return v.filter(function (r) { return r[0] && r[1]; }).map(function (r) { return { motif: String(r[0]), poste: String(r[1]), sous: String(r[2] || '') }; });
+    return readRange(id, 'Regles!A2:D500').then(function (v) {
+      return v.filter(function (r) { return r[0] && r[1]; }).map(function (r) { return { motif: String(r[0]), poste: String(r[1]), sous: String(r[2] || ''), montant: r[3] === '' || r[3] == null ? '' : Number(r[3]) || '' }; });
     });
   }
   function readOps(id) {
@@ -213,10 +213,10 @@
     forceSync: function () { return compute(true).then(function (d) { cacheData(d); return d; }); },
     saveRules: function (list) {
       var id, clean = (list || []).filter(function (r) { return r && r.motif && r.poste; }).slice(0, 300).map(function (r) {
-        return { motif: String(r.motif).slice(0, 120), poste: String(r.poste).slice(0, 120), sous: String(r.sous || '').slice(0, 120) };
+        return { motif: String(r.motif).slice(0, 120), poste: String(r.poste).slice(0, 120), sous: String(r.sous || '').slice(0, 120), montant: r.montant === '' || r.montant == null ? '' : Math.abs(Number(r.montant)) || '' };
       });
-      return findSheet().then(function (sid) { id = sid; return ensureSheet(id, 'Regles', ['motif', 'poste', 'sous_poste']); })
-        .then(function () { return writeRange(id, 'Regles', 3, clean.map(function (r) { return [r.motif, r.poste, r.sous]; })); })
+      return findSheet().then(function (sid) { id = sid; return ensureSheet(id, 'Regles', ['motif', 'poste', 'sous_poste', 'montant']); })
+        .then(function () { return writeRange(id, 'Regles', 4, clean.map(function (r) { return [r.motif, r.poste, r.sous, r.montant]; })); })
         .then(function () { return clean; });
     },
     saveBudget: function (poste, montant) {

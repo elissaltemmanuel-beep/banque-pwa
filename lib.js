@@ -140,15 +140,18 @@ function norm_(s) {
  */
 function applyRules_(rows, rules) {
   var user = (rules || []).map(function (r) {
-    return { m: norm_(r.motif), poste: String(r.poste || '').trim(), sous: String(r.sous || '').trim() };
-  }).filter(function (r) { return r.m && r.poste; });
+    var a = r.montant === '' || r.montant == null ? null : Math.abs(parseNumber_(r.montant));
+    return { m: norm_(r.motif), poste: String(r.poste || '').trim(), sous: String(r.sous || '').trim(), amt: a || null };
+  }).filter(function (r) { return r.m && r.poste; })
+    .sort(function (a, b) { return (b.amt ? 1 : 0) - (a.amt ? 1 : 0) || b.m.length - a.m.length; });
   return rows.map(function (r) {
     var hay = ' ' + norm_(r[2] + ' ' + r[4]) + ' ', i, c;
     for (i = 0; i < user.length; i++) {
-      if (hay.indexOf(user[i].m) > -1) {
+      if (hay.indexOf(user[i].m) > -1 && (user[i].amt == null || Math.abs(Math.abs(r[7]) - user[i].amt) < 0.005)) {
         c = r.slice(); c[6] = user[i].poste; c[5] = user[i].sous || user[i].poste; return c;
       }
     }
+    if (r[6] === 'Virements émis') { c = r.slice(); c[6] = 'Virements'; c[5] = r[5] === 'Virements émis' ? 'Virements' : r[5]; return c; }
     if (!r[6] || /non\s*cat/i.test(r[6])) {
       for (i = 0; i < DEFAULT_RULES_.length; i++) {
         if (DEFAULT_RULES_[i].re.test(hay.trim())) { c = r.slice(); c[6] = DEFAULT_RULES_[i].poste; c[5] = r[5] && !/non\s*cat/i.test(r[5]) ? r[5] : c[6]; return c; }
