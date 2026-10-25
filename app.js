@@ -2,7 +2,7 @@
   'use strict';
   var TOL=0.15, MIN_EUR=20, D=null, DAY=1, DAYS=30, ELAPSED=0, CATS=[];
   var S={tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
-  function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12',exc:''}; }
+  function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12',exc:'excl'}; }
   S.f=fcopy();
   try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view2) S.view=pr.view2; if(pr.per) S.per=pr.per; }catch(e){}
   function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view2:S.view,per:S.per})); }catch(e){} }
@@ -34,9 +34,9 @@
       if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
-    return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc==='excl'?c.exc:null);
+    return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc!=='incl'?c.exc:null);
       return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc==='excl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm}; })}; }); }
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
@@ -44,7 +44,7 @@
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
   function srt(arr,ec){ var s=arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); return s; }
   function applyF(list){ return list; }
-  function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(f.year&&D&&f.year!==D.today.month.slice(0,4)||f.month&&D&&f.month!==D.today.month.slice(5,7))n++; if(f.poste)n++; if(f.sous)n++; if(f.moy!=='12')n++; if(f.exc==='excl')n++; return n; }
+  function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(f.year&&D&&f.year!==D.today.month.slice(0,4)||f.month&&D&&f.month!==D.today.month.slice(5,7))n++; if(f.poste)n++; if(f.sous)n++; if(f.moy!=='12')n++; if(f.exc==='incl')n++; return n; }
 
   /* ---------- en-tête ---------- */
   function exportInfo(){ var fd=D.sync&&D.sync.fileDate, stale=fd&&daysBetween(fd,D.today.iso)>2;
@@ -419,7 +419,7 @@
       sec('Poste et sous-poste','<label class="fsel"><span>Poste</span><select data-fsel="poste" aria-label="Poste">'+opt('','Tous les postes',!f.poste)+cats.map(function(c){return opt(c.id,c.n,f.poste===c.id)}).join('')+'</select></label>'+
         '<label class="fsel" style="margin-top:8px"><span>Sous-poste</span><select data-fsel="sous" aria-label="Sous-poste"'+(pc?'':' disabled')+'>'+opt('',pc?'Tous les sous-postes':'Choisir d\'abord un poste',!f.sous)+(pc?pc.subs.map(function(s){return opt(s.n,s.n,f.sous===s.n)}).join(''):'')+'</select></label>')+
       sec('Moyenne calculée sur',seg('moy',[['3','3 mois'],['6','6 mois'],['12','12 mois']]))+
-      sec('Dépenses exceptionnelles dans la moyenne',seg('exc',[['','Incluses'],['excl','Exclues']])+'<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Une dépense exceptionnelle est un paiement ponctuel de 500 € ou plus (hors abonnements et prélèvements récurrents).</p>');
+      sec('Dépenses exceptionnelles dans la moyenne',seg('exc',[['excl','Exclues'],['incl','Incluses']])+'<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Une dépense exceptionnelle est un paiement ponctuel de 500 € ou plus (hors abonnements et prélèvements récurrents).</p>');
     el.innerHTML='<div class="fwrap"><div class="scrim" data-fc="close"></div><div class="fin"><section class="fpanel fpB'+(anim?' anim':'')+'" role="dialog" aria-modal="true" aria-label="Filtres">'+
       '<div class="fhead"><h2>Filtres'+(fcount()?' <span class="muted" style="font-weight:500;font-size:14px">· '+fcount()+' actif'+(fcount()>1?'s':'')+'</span>':'')+'</h2><button class="iconbtn" data-fc="close" aria-label="Fermer les filtres">'+ico(I.close)+'</button></div><div class="fbody">'+body+'</div>'+
       '<div class="ffoot"><button class="fbtn ghost" data-fc="reset">Réinitialiser</button><button class="fbtn" data-fc="close">Afficher</button></div></section></div></div>';
