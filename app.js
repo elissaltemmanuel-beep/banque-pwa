@@ -2,7 +2,7 @@
   'use strict';
   var TOL=0.15, MIN_EUR=20, D=null, DAY=1, DAYS=30, ELAPSED=0, CATS=[];
   var S={tab:'home',open:null,hide:false,q:'',view:'ecarts',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
-  function fcopy(){ return {graph:'solde',off:{},alertes:0,moy:'12',min:0}; }
+  function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12'}; }
   S.f=fcopy();
   try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view) S.view=pr.view; if(pr.per) S.per=pr.per; }catch(e){}
   function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view:S.view,per:S.per})); }catch(e){} }
@@ -20,21 +20,37 @@
 
   /* ---------- données ---------- */
   function avgOf(h,k){ var a=h.slice(-k); return a.length? a.reduce(function(s,v){return s+v},0)/a.length : 0; }
-  function buildCats(){ var k=+S.f.moy;
-    return D.cats.map(function(c){ return {id:c.id,n:c.n,spent:c.spent,avg:Math.max(avgOf(c.hist,k),1),ops:c.ops,
-      subs:c.subs.map(function(s,i){ return {id:c.id+'-'+i,n:s.n,spent:s.spent,avg:Math.max(avgOf(s.hist,k),1)}; })}; }); }
+  var MOIS_INITIALES=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  var MOIS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function sum(arr){ return arr.reduce(function(s,v){return s+v},0); }
+  /* période choisie dans les filtres : un mois (par défaut le mois en cours) ou une année entière */
+  function per(){ var keys=(D&&D.keys)||[], curK=D?D.today.month:'', cy=curK.slice(0,4), cm=curK.slice(5,7), y=S.f.year||cy, mo=S.f.month||cm, isYear=mo==='all', key=y+'-'+mo, idxs=[];
+    keys.forEach(function(k,i){ if(isYear? k.slice(0,4)===y : k===key) idxs.push(i); });
+    return {y:y,mo:mo,isYear:isYear,key:key,cur:!isYear&&key===curK,curYear:y===cy,idxs:idxs,label:isYear?'Année '+y:MOIS_L[+mo-1].charAt(0).toUpperCase()+MOIS_L[+mo-1].slice(1)+' '+y}; }
+  function buildCats(){ var k=+S.f.moy, P_=per(), first=P_.idxs.length?P_.idxs[0]:0;
+    ELAPSED=P_.cur? DAY/DAYS : 1;
+    var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
+    function calc(all,hist,spentNow){
+      if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1)};
+      var spent=sum(P_.idxs.map(function(i){return all[i]||0})), prior=all.slice(Math.max(0,first-k),first), am=prior.length? sum(prior)/prior.length : sum(all)/Math.max(all.length,1);
+      return {spent:spent,avg:Math.max(am*monthsN,1)}; }
+    return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent);
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all}; })}; }); }
   function setData(d){ D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
     if(over<MIN_EUR) return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'};
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
   function srt(arr,ec){ return arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); }
-  function applyF(list){ return list.filter(function(c){ return !S.f.off[c.id] && (!S.f.alertes||status(c).k==='bad') && c.spent>=S.f.min; }); }
-  function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(Object.keys(f.off).some(function(k){return f.off[k]}))n++; if(f.alertes)n++; if(f.moy!=='12')n++; if(f.min>0)n++; return n; }
+  function applyF(list){ return list; }
+  function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(f.year&&D&&f.year!==D.today.month.slice(0,4)||f.month&&D&&f.month!==D.today.month.slice(5,7))n++; if(f.poste)n++; if(f.sous)n++; if(f.moy!=='12')n++; return n; }
 
   /* ---------- en-tête ---------- */
   function exportInfo(){ var fd=D.sync&&D.sync.fileDate, stale=fd&&daysBetween(fd,D.today.iso)>2;
     return {label: fd? 'Export du '+fmtDate(fd) : 'Données au '+fmtDate(D.stats.lastRealDate), stale: !!stale}; }
-  function alertsList(){ var a=[], L=D.proj&&D.proj.landing, ex=exportInfo();
+  function onCurrentMonth(fn){ var sv=S.f, cs=CATS, el=ELAPSED; S.f=Object.assign({},sv,{year:'',month:''}); CATS=buildCats(); var r; try{ r=fn(); } finally{ S.f=sv; CATS=cs; ELAPSED=el; } return r; }
+  function alertsList(){ return onCurrentMonth(alertsListRaw); }
+  function alertsListRaw(){ var a=[], L=D.proj&&D.proj.landing, ex=exportInfo();
     if(L&&L.days>0){ if(L.value<0) a.push({k:'bad',t:'Solde négatif prévu',m:'Atterrissage à '+eur(L.value)+' au '+fmtDate(L.date)+', juste avant la paie.',tab:'home'}); else if(L.value<300) a.push({k:'warn',t:'Atterrissage serré',m:'Il resterait '+eur(L.value)+' au '+fmtDate(L.date)+', juste avant la paie.',tab:'home'}); }
     CATS.forEach(function(c){ var s=status(c); if(s.k==='bad'||s.k==='warn') a.push({k:s.k,t:c.n+' : '+s.t.toLowerCase(),m:eur(c.spent)+' dépensés, rythme attendu '+eur(c.avg*ELAPSED)+'.',open:c.id}); });
     CATS.forEach(function(c){ if(!(D.budgets&&D.budgets[c.n])) return; var b=budInfo(c); if(b.k!=='ok') a.push({k:b.k,t:'Budget '+c.n+' : '+b.t.toLowerCase(),m:eur(c.spent)+' sur un plafond de '+eur(b.cap)+'.',tab:'bud'}); });
@@ -79,66 +95,74 @@
   function niceCeil(v){ var step=v>12000?5000:v>6000?2000:v>2500?1000:v>1000?500:100; return Math.max(step,Math.ceil(v*1.08/step)*step); }
   function maxOf(a){ return a.reduce(function(m,v){return v>m?v:m},0); }
   function chartCard(){
-    var mois=S.per==='mois', dr=S.f.graph==='dr', G=120, B=140, svg='', sum='', leg='', badge='', aria='', C=D.curve, P=D.proj, N=DAYS;
-    var title=mois?D.today.label:'Les 12 derniers mois';
-    function X(i){ return 10+i/(N-1)*330; }
+    var PR=per(), P=D.proj, C=D.curve, G=120, B=140, N=30, gr=S.f.graph, svg='', sum_='', leg='', badge='', aria='', title=PR.label;
+    var poste=S.f.poste?CATS.filter(function(c){return c.id===S.f.poste})[0]:null, sous=poste&&S.f.sous?poste.subs.filter(function(s){return s.n===S.f.sous})[0]:null;
+    var bars=!!poste||PR.isYear||S.per!=='mois', COL={solde:'var(--accent)',dep:'var(--accent)',rev:'var(--c2)'};
+    function X(i){ return 10+i/(Math.max(N-1,1))*330; }
     function Y(v,mx){ return (B-Math.max(0,Math.min(v,mx))/mx*G).toFixed(1); }
     function pts(arr,mx){ return arr.map(function(v,i){return X(i).toFixed(1)+','+Y(v,mx)}).join(' '); }
     function pp(list,mx){ return list.map(function(p){return X(p[0]-1).toFixed(1)+','+Y(p[1],mx)}).join(' '); }
     function txt(x,y,t,o){ o=o||{}; return '<text x="'+x+'" y="'+y+'" fill="'+(o.fill||'var(--muted)')+'" font-size="'+(o.size||10)+'"'+(o.w?' font-weight="'+o.w+'"':'')+(o.a?' text-anchor="'+o.a+'"':'')+'>'+t+'</text>'; }
     function grid(mx){ var mid=mx/2; return '<line x1="10" y1="'+B+'" x2="340" y2="'+B+'" stroke="var(--rim-soft)"/><line x1="10" y1="'+Y(mid,mx)+'" x2="340" y2="'+Y(mid,mx)+'" stroke="var(--rim-soft)" stroke-dasharray="2 4"/>'+(S.hide?'':txt(12,(Y(mid,mx)-4),new Intl.NumberFormat('fr-FR').format(mid)+' €')); }
-    function days(){ return txt(10,156,'1')+txt(X(14).toFixed(0)-6,156,'15')+txt((X(DAY-1)-6).toFixed(0),156,String(DAY),{fill:'var(--text)',w:600})+txt(330,156,String(N)); }
+    function days(mark){ return txt(10,156,'1')+txt(X(14).toFixed(0)-6,156,'15')+(mark?txt((X(mark-1)-6).toFixed(0),156,String(mark),{fill:'var(--text)',w:600}):'')+txt(330,156,String(N)); }
     function ln(p,col,w,dash){ return '<polyline points="'+p+'" fill="none" stroke="'+col+'" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>'; }
     function lg(col,dash,t){ return '<span style="display:inline-flex;align-items:center;gap:6px"><svg width="18" height="4" aria-hidden="true"><line x1="0" y1="2" x2="18" y2="2" stroke="'+col+'" stroke-width="2.4"'+(dash?' stroke-dasharray="'+dash+'"':'')+' stroke-linecap="round"/></svg>'+t+'</span>'; }
     function sq(col,t){ return '<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:3px;background:'+col+';display:inline-block"></i>'+t+'</span>'; }
-    var sd=P.salary.day, sal=P.salary.expected, endTxt=fmtDate(D.today.month+'-'+(N<10?'0':'')+N);
-    if(mois&&dr){
-      var depNow=C.depCum[DAY-1]||0, revNow=C.revCum[DAY-1]||0, hNow=C.habit[DAY-1]||0;
-      var mx=niceCeil(Math.max(P.depEnd,P.revEnd,maxOf(C.habit),depNow,revNow));
-      if(hNow>0){ var pc=Math.round((depNow/hNow-1)*100); badge='<span class="badge '+(pc>15?'bad':pc>5?'warn':'ok')+'">'+(pc>0?'+':'')+pc+' % vs rythme habituel</span>'; }
-      sum=eur(depNow)+' dépensés et '+eur(revNow)+' reçus au jour '+DAY+(hNow>0?', contre '+eur(hNow)+' dépensés en moyenne à cette date':'')+'.'+(sal>0?' Salaire attendu vers le '+sd+' : +'+eur(sal)+'.':'');
-      aria='Courbes cumulées du mois : dépenses '+Math.round(depNow)+' euros au jour '+DAY+', revenus '+Math.round(revNow)+' euros';
-      var rp=sal>0? [[DAY,revNow],[Math.max(DAY,sd-1),revNow],[sd,P.revEnd],[N,P.revEnd]] : [[DAY,revNow],[N,P.revEnd]];
-      svg=grid(mx)+ln(pts(C.habit,mx),'var(--muted)',1.6,'4 4')+ln(pp([[DAY,depNow],[N,P.depEnd]],mx),'var(--accent)',1.8,'2 4')+ln(pp(rp,mx),'var(--c2)',1.8,'2 4')+ln(pts(C.revCum,mx),'var(--c2)',2.2)+ln(pts(C.depCum,mx),'var(--accent)',2.8)+'<circle cx="'+X(DAY-1).toFixed(1)+'" cy="'+Y(depNow,mx)+'" r="4.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"/>'+days();
-      leg=lg('var(--accent)','','Dépenses')+lg('var(--muted)','4 4','Rythme habituel')+lg('var(--c2)','','Revenus')+'<span>Pointillés : projection</span>';
-    } else if(mois){
-      var vals=C.bal.concat(C.proj.map(function(p){return p[1]})), mx2=niceCeil(Math.max(maxOf(vals),1));
-      var LD=P.landing, inMonth=LD&&LD.date.slice(0,7)===D.today.month&&LD.days>0, endP=C.proj[C.proj.length-1];
-      if(inMonth){
-        sum='Solde actuel '+eur(D.solde)+'. Atterrissage au '+fmtDate(LD.date)+', juste avant la paie : '+eur(LD.value)+', après les opérations déjà programmées et vos dépenses courantes estimées.';
-        aria='Courbe du solde du mois : '+Math.round(D.solde)+' euros aujourd\'hui, '+Math.round(LD.value)+' euros la veille de la paie';
-      } else {
-        sum='Solde actuel '+eur(D.solde)+'. Projeté au '+endTxt+' : '+eur(P.value)+', après les opérations déjà programmées'+(sal>0?', le salaire attendu vers le '+sd:'')+' et vos dépenses courantes estimées.'+(LD&&LD.days>0?' Atterrissage avant la prochaine paie, au '+fmtDate(LD.date)+' : '+eur(LD.value)+'.':'');
-        aria='Courbe du solde du mois : '+Math.round(D.solde)+' euros aujourd\'hui, projeté à '+Math.round(P.value)+' euros en fin de mois';
-      }
-      var lx=Math.min(endP[0],N), lt=(lx>=N-3||lx>DAY+(N-DAY)*.6);
-      svg=grid(mx2)+ln(pp(C.proj,mx2),'var(--accent)',1.8,'2 4')+ln(pts(C.bal,mx2),'var(--accent)',2.8)+'<circle cx="'+X(DAY-1).toFixed(1)+'" cy="'+Y(D.solde,mx2)+'" r="4.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"/>'+(inMonth?'<circle cx="'+X(lx-1).toFixed(1)+'" cy="'+Y(LD.value,mx2)+'" r="3.5" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>':'')+(S.hide?'':txt(inMonth?(lt?X(lx-1).toFixed(1):(X(lx-1)+8).toFixed(1)):340,(Y(inMonth?LD.value:P.value,mx2)-7),eur(inMonth?LD.value:P.value),{a:inMonth&&!lt?'start':'end',fill:'var(--text)',w:600}))+days();
-      leg=lg('var(--accent)','','Solde')+'<span>Pointillés : projection'+(inMonth?' jusqu’à la veille de la paie':(sal>0?' (salaire attendu vers le '+sd+')':''))+'</span>';
+    function cum(arr,upto){ var c=0,o=[]; for(var i=0;i<Math.min(arr.length,upto);i++){ c+=arr[i]||0; o.push(c); } return o; }
+    function fill(arr){ var last=null,o=[]; arr.forEach(function(v){ if(v!=null) last=v; o.push(last==null?0:last); }); return o; }
+    var dot=function(x,y,col,hollow){ return '<circle cx="'+x+'" cy="'+y+'" r="'+(hollow?3.5:4.5)+'" fill="'+(hollow?'var(--bg)':col)+'" stroke="'+(hollow?col:'var(--bg)')+'" stroke-width="2"/>'; };
+
+    if(bars){
+      /* barres mensuelles : 12 mois qui se terminent au mois choisi (ou les 12 mois de l'année choisie) */
+      var all=D.keys||[], endI=PR.idxs.length? PR.idxs[PR.idxs.length-1] : all.length-1, startI;
+      if(PR.isYear&&PR.idxs.length){ startI=PR.idxs[0]; endI=Math.min(startI+11,all.length-1); } else startI=Math.max(0,endI-11);
+      var idx=[]; for(var q=startI;q<=endI;q++) idx.push(q);
+      var vals, name, curLast=all[endI]===D.today.month;
+      if(poste){ var src=(sous||poste).all||[]; vals=idx.map(function(i){return src[i]||0}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:''); }
+      else { var ser=D.seriesAll||[]; vals=idx.map(function(i){ var o=ser[i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:o.bal) : 0; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':'Solde de fin de mois'; title=PR.isYear?PR.label:'Les 12 derniers mois'; }
+      var projV=null; if(!poste&&curLast) projV=gr==='dep'?P.depEnd:gr==='rev'?P.revEnd:P.value;
+      var mx=niceCeil(Math.max(maxOf(vals),projV||0,1)), bw=330/idx.length, g=grid(mx), hi=PR.idxs.length&&!PR.isYear? idx.indexOf(PR.idxs[0]) : idx.length-1;
+      N=idx.length; var col=poste?'var(--accent)':COL[gr];
+      idx.forEach(function(ii,n){ var cx=10+bw*(n+.5), v=vals[n], key=all[ii]||'', lab=MOIS_INITIALES[+key.slice(5,7)-1]||'';
+        g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(v,mx)+'" width="16" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="'+(n===hi||PR.isYear?col:'var(--neu)')+'"/>';
+        if(n===idx.length-1&&projV!=null) g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(projV,mx)+'" width="16" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>'+(S.hide?'':txt((cx+10).toFixed(1),(Y(projV,mx)-6),eur(projV),{a:'end',fill:'var(--text)',w:600}));
+        g+=txt(cx.toFixed(1),156,lab,{a:'middle',fill:n===hi?'var(--text)':'var(--muted)',w:n===hi?600:0}); });
+      var nz=vals.filter(function(v){return v>0}), mean=nz.length? sum(nz)/nz.length : 0;
+      sum_= poste? ('Dépenses mensuelles du poste. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
+        : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Mois en cours : '+eur(D.solde)+' aujourd\'hui, projeté à '+eur(P.value)+' en fin de mois.':'')
+        : (gr==='dep'?'Dépenses':'Revenus')+' de chaque mois, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'');
+      aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(projV!=null?'<span>Pointillés : projection</span>':'');
     } else {
-      var M=D.months, bw=330/M.length, last=M.length-1, g='', i, cx, mx3, mxs;
-      if(dr){ mx3=niceCeil(Math.max(maxOf(M.map(function(m){return Math.max(m.rev,m.dep)})),P.revEnd,P.depEnd,1));
-        sum='Revenus et dépenses de chaque mois. Le mois en cours est marqué : les contours en pointillés montrent la projection de fin de mois.';
-        aria='Barres des 12 derniers mois : revenus et dépenses';
-        g=grid(mx3);
-        for(i=0;i<M.length;i++){ cx=10+bw*(i+.5);
-          g+='<rect x="'+(cx-10).toFixed(1)+'" y="'+Y(M[i].rev,mx3)+'" width="9" height="'+(Math.min(M[i].rev,mx3)/mx3*G).toFixed(1)+'" rx="2.5" fill="var(--neu)"/><rect x="'+(cx+1).toFixed(1)+'" y="'+Y(M[i].dep,mx3)+'" width="9" height="'+(Math.min(M[i].dep,mx3)/mx3*G).toFixed(1)+'" rx="2.5" fill="var(--accent)"/>';
-          if(i===last) g+='<rect x="'+(cx-10).toFixed(1)+'" y="'+Y(P.revEnd,mx3)+'" width="9" height="'+(Math.min(P.revEnd,mx3)/mx3*G).toFixed(1)+'" rx="2.5" fill="none" stroke="var(--neu)" stroke-dasharray="2 2"/><rect x="'+(cx+1).toFixed(1)+'" y="'+Y(P.depEnd,mx3)+'" width="9" height="'+(Math.min(P.depEnd,mx3)/mx3*G).toFixed(1)+'" rx="2.5" fill="none" stroke="var(--accent)" stroke-dasharray="2 2"/>';
-          g+=txt(cx.toFixed(1),156,M[i].lab,{a:'middle',fill:i===last?'var(--text)':'var(--muted)',w:i===last?600:0}); }
-        svg=g; leg=sq('var(--neu)','Revenus')+sq('var(--accent)','Dépenses')+'<span>Pointillés : projection</span>';
-      } else { mxs=niceCeil(Math.max(maxOf(M.map(function(m){return m.bal})),P.value,1));
-        sum='Solde en fin de chaque mois. Mois en cours : '+eur(D.solde)+' aujourd\'hui, projeté à '+eur(P.value)+' en fin de mois.';
-        aria='Barres du solde en fin de mois sur 12 mois, '+Math.round(D.solde)+' euros aujourd\'hui, projeté à '+Math.round(P.value)+' euros';
-        g=grid(mxs);
-        for(i=0;i<M.length;i++){ cx=10+bw*(i+.5);
-          g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(M[i].bal,mxs)+'" width="16" height="'+(Math.min(Math.max(M[i].bal,0),mxs)/mxs*G).toFixed(1)+'" rx="4" fill="'+(i===last?'var(--accent)':'var(--neu)')+'"/>';
-          if(i===last) g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(P.value,mxs)+'" width="16" height="'+(Math.min(Math.max(P.value,0),mxs)/mxs*G).toFixed(1)+'" rx="4" fill="none" stroke="var(--accent)" stroke-dasharray="2 2"/>'+(S.hide?'':txt((cx+10).toFixed(1),(Y(P.value,mxs)-6),eur(P.value),{a:'end',fill:'var(--text)',w:600}));
-          g+=txt(cx.toFixed(1),156,M[i].lab,{a:'middle',fill:i===last?'var(--text)':'var(--muted)',w:i===last?600:0}); }
-        svg=g; leg=sq('var(--neu)','Fin de mois')+sq('var(--accent)','Mois en cours')+'<span>Pointillés : projection</span>'; }
+      var dm=D.daily&&D.daily[PR.key], dn=dm?dm.d.length:30; N=PR.cur?DAYS:dn; var nowD=PR.cur?DAY:N;
+      if(!dm&&!PR.cur){ sum_='Pas de détail jour par jour pour ce mois. Choisissez « 12 mois » ou un mois plus récent.'; svg=grid(1); aria='Aucune donnée'; }
+      else if(gr==='solde'){
+        var bal=PR.cur?C.bal:fill(dm.b), prj=PR.cur?C.proj:[], vv=bal.concat(prj.map(function(p){return p[1]})), mx2=niceCeil(Math.max(maxOf(vv),1));
+        if(PR.cur){ var LD=P.landing, inMonth=LD&&LD.date.slice(0,7)===D.today.month&&LD.days>0, endP=prj[prj.length-1], sd=P.salary.day, sal=P.salary.expected;
+          if(inMonth){ sum_='Solde actuel '+eur(D.solde)+'. Atterrissage au '+fmtDate(LD.date)+', juste avant la paie : '+eur(LD.value)+'.'; aria='Solde du mois, atterrissage '+Math.round(LD.value)+' euros'; }
+          else { sum_='Solde actuel '+eur(D.solde)+'. Projeté en fin de mois : '+eur(P.value)+(sal>0?', salaire attendu vers le '+sd:'')+'.'+(LD&&LD.days>0?' Atterrissage avant la prochaine paie, au '+fmtDate(LD.date)+' : '+eur(LD.value)+'.':''); aria='Solde du mois, projeté '+Math.round(P.value)+' euros'; }
+          var lx=Math.min(endP[0],N), lt=(lx>=N-3||lx>DAY+(N-DAY)*.6);
+          svg=grid(mx2)+ln(pp(prj,mx2),'var(--accent)',1.8,'2 4')+ln(pts(bal,mx2),'var(--accent)',2.8)+dot(X(DAY-1).toFixed(1),Y(D.solde,mx2),'var(--accent)')+(inMonth?dot(X(lx-1).toFixed(1),Y(LD.value,mx2),'var(--accent)',true):'')+(S.hide?'':txt(inMonth?(lt?X(lx-1).toFixed(1):(X(lx-1)+8).toFixed(1)):340,(Y(inMonth?LD.value:P.value,mx2)-7),eur(inMonth?LD.value:P.value),{a:inMonth&&!lt?'start':'end',fill:'var(--text)',w:600}))+days(DAY);
+          leg=lg('var(--accent)','','Solde')+'<span>Pointillés : projection'+(inMonth?' jusqu’à la veille de la paie':'')+'</span>';
+        } else { var mn=Math.min.apply(null,bal), mxv=Math.max.apply(null,bal);
+          sum_='Solde de fin de mois : '+eur(bal[bal.length-1])+'. Plus bas : '+eur(mn)+', plus haut : '+eur(mxv)+'.'; aria='Solde du mois, '+Math.round(bal[bal.length-1])+' euros en fin de mois';
+          svg=grid(mx2)+ln(pts(bal,mx2),'var(--accent)',2.8)+dot(X(bal.length-1).toFixed(1),Y(bal[bal.length-1],mx2),'var(--accent)')+days(0); leg=lg('var(--accent)','','Solde'); }
+      } else {
+        var isD=gr==='dep', arr=PR.cur?(isD?C.depCum:C.revCum):cum(isD?dm.d:dm.r,N), endV=PR.cur?(isD?P.depEnd:P.revEnd):arr[arr.length-1]||0, nowV=arr[nowD-1]||0, hab=[];
+        if(isD){ if(PR.cur) hab=C.habit; else { var pk=(D.keys||[]).slice(Math.max(0,PR.idxs[0]-12),PR.idxs[0]).filter(function(k){return D.daily&&D.daily[k]}); for(var d0=0;d0<N;d0++){ var t=0; pk.forEach(function(k){ t+=cum(D.daily[k].d,d0+1).pop()||0; }); hab.push(pk.length? t/pk.length : 0); } } }
+        var mx3=niceCeil(Math.max(endV,nowV,maxOf(hab),1)), hN=hab[nowD-1]||0;
+        if(isD&&hN>0&&PR.cur){ var pc=Math.round((nowV/hN-1)*100); badge='<span class="badge '+(pc>15?'bad':pc>5?'warn':'ok')+'">'+(pc>0?'+':'')+pc+' % vs rythme habituel</span>'; }
+        sum_=(isD?'Dépenses cumulées : ':'Revenus cumulés : ')+eur(nowV)+(PR.cur?' au jour '+DAY:' sur le mois')+(isD&&hN>0?', contre '+eur(hN)+' en moyenne à cette date':'')+'.'+(PR.cur&&!isD&&P.salary.expected>0?' Salaire attendu vers le '+P.salary.day+' : +'+eur(P.salary.expected)+'.':'');
+        aria=(isD?'Dépenses':'Revenus')+' cumulés du mois : '+Math.round(nowV)+' euros';
+        var rp=PR.cur?(isD?[[DAY,nowV],[N,endV]]:(P.salary.expected>0?[[DAY,nowV],[Math.max(DAY,P.salary.day-1),nowV],[P.salary.day,endV],[N,endV]]:[[DAY,nowV],[N,endV]])):[];
+        svg=grid(mx3)+(isD&&hab.length?ln(pts(hab,mx3),'var(--muted)',1.6,'4 4'):'')+(PR.cur?ln(pp(rp,mx3),COL[gr],1.8,'2 4'):'')+ln(pts(arr,mx3),COL[gr],2.8)+dot(X(nowD-1).toFixed(1),Y(nowV,mx3),COL[gr])+days(PR.cur?DAY:0);
+        leg=lg(COL[gr],'',isD?'Dépenses':'Revenus')+(isD&&hab.length?lg('var(--muted)','4 4','Rythme habituel'):'')+(PR.cur?'<span>Pointillés : projection</span>':'');
+      }
     }
-    return '<div class="card"><div class="row"><h2 style="font-size:16px">'+title+'</h2>'+badge+'</div>'+
-      '<div class="ctrls"><div class="seg sm" role="group" aria-label="Période du graphique"><button data-per="mois" aria-pressed="'+mois+'">Mois en cours</button><button data-per="annee" aria-pressed="'+!mois+'">Tous les mois</button></div></div>'+
-      '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum+'</p>'+
-      '<svg viewBox="0 0 350 162" width="100%" role="img" aria-label="'+aria+'">'+svg+'</svg>'+
+    var showTog=!poste&&!PR.isYear;
+    return '<div class="card"><div class="row"><h2 style="font-size:16px">'+esc(title)+'</h2>'+badge+'</div>'+
+      (showTog?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Affichage du graphique"><button data-per="mois" aria-pressed="'+(S.per==='mois')+'">Mois</button><button data-per="annee" aria-pressed="'+(S.per!=='mois')+'">12 mois</button></div></div>':'')+
+      '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
+      '<svg viewBox="0 0 350 162" width="100%" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg>'+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div>'; }
 
   /* ---------- écrans ---------- */
@@ -165,7 +189,13 @@
   function homeScreen(){
     return header()+syncNote()+'<div><div class="muted" style="font-size:14px">Solde BoursoBank</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
     landingCard()+chartCard()+
-    '<div class="row"><h2 style="font-size:18px">Postes</h2><span class="muted" style="font-size:12px">Jour '+DAY+' sur '+DAYS+'</span></div>'+compactCard(CATS);
+    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList();
+  }
+  function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):'Postes'; }
+  function postesList(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null;
+    if(!c) return compactCard(CATS);
+    var list=S.f.sous? c.subs.filter(function(s){return s.n===S.f.sous}) : c.subs;
+    return '<button class="back" data-act="clearposte" style="min-height:36px">'+ico(I.back)+esc(c.n)+' · retirer le filtre</button>'+compactCard(list,true);
   }
   function opsList(arr){ return arr.map(function(o){ return '<div class="opline"><div class="l"><span style="font-weight:600;font-size:14px">'+esc(o[1])+'</span><span class="muted" style="font-size:12px">'+esc(fmtDate(o[0]))+(o[4]?' · à venir':'')+' · '+esc(o[2])+'</span></div><span class="amt '+(o[3]>0?'pos':'')+'" style="font-weight:600">'+(S.hide?'••••':(o[3]>0?'+':'')+eur(o[3],true))+'</span></div>'; }).join(''); }
   function detailScreen(){ var c=CATS.filter(function(x){return x.id===S.open})[0]; if(!c){ S.open=null; return homeScreen(); } var s=status(c);
@@ -181,7 +211,7 @@
     '<div class="card" style="display:flex;flex-direction:column;gap:8px"><h3 style="font-size:15px">Vos données</h3>'+
       '<div class="muted" style="font-size:13px;line-height:1.5">Dernier export lu : <b style="color:var(--text)">'+esc(s.fileName||'inconnu')+'</b>'+(s.fileDate?' ('+esc(fmtDate(s.fileDate))+')':'')+'<br>'+st.rows+' opérations en mémoire, du '+esc(fmtDate(st.from))+' au '+esc(fmtDate(st.to))+'.'+(s.lastSync?'<br>Dernière synchronisation : '+esc(String(s.lastSync).replace('T',' à ')):'')+'<br>Les mouvements entre vos propres comptes ('+st.internal+') ne sont pas comptés dans les dépenses.</div>'+
       '<button class="fbtn" data-act="sync"'+(S.syncing?' disabled':'')+'>'+(S.syncing?'Lecture du dossier…':'Relire le dossier maintenant')+'</button>'+
-      '<div class="muted" style="font-size:12px;line-height:1.4">Déposez un nouvel export dans le dossier « Export banque » : il est lu automatiquement à l\'ouverture de cette page.</div></div><button class="fbtn ghost" data-act="signout">Se déconnecter et effacer les données de cet appareil</button><p class="note">Prévus ensuite : règles de catégorisation, objectifs d\'épargne.</p>'; }
+      '<div class="muted" style="font-size:12px;line-height:1.4">Déposez un nouvel export dans le dossier « Export banque » : il est lu automatiquement à l\'ouverture de cette page.</div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="muted" style="font-size:13px">Version de l\'application : <b style="color:var(--text)">'+esc((window.BANQUE_CONFIG&&BANQUE_CONFIG.BUILD)||'?')+'</b></div><button class="fbtn ghost" data-act="forceupdate" style="width:100%">Forcer la mise à jour</button></div><button class="fbtn ghost" data-act="signout">Se déconnecter et effacer les données de cet appareil</button><p class="note">Prévus ensuite : règles de catégorisation, objectifs d\'épargne.</p>'; }
 
 
 
@@ -221,7 +251,8 @@
   function budInfo(c){ var set=D.budgets&&D.budgets[c.n], cap=set||Math.max(Math.round(c.avg),1), p=c.spent/cap, proj=DAY>=5?c.spent/ELAPSED:c.spent, k, t;
     if(c.spent>cap){ k='bad'; t='Dépassé'; } else if(proj>cap*1.1&&c.spent-cap*ELAPSED>MIN_EUR){ k='warn'; t='Rythme élevé'; } else { k='ok'; t='Dans le budget'; }
     return {c:c,cap:cap,set:!!set,p:p,k:k,t:t,left:cap-c.spent}; }
-  function budScreen(){ var items=CATS.filter(function(c){return c.spent>0||c.avg>10}).map(budInfo).sort(function(a,b){return b.c.spent-a.c.spent});
+  function budScreen(){ return onCurrentMonth(budScreenRaw); }
+  function budScreenRaw(){ var items=CATS.filter(function(c){return c.spent>0||c.avg>10}).map(budInfo).sort(function(a,b){return b.c.spent-a.c.spent});
     var tc=items.reduce(function(a,x){return a+x.cap},0), ts=items.reduce(function(a,x){return a+x.c.spent},0);
     return header()+'<h1 style="font-size:26px">Budgets</h1>'+
     '<div class="card"><div class="muted" style="font-size:13px">Dépensé ce mois-ci</div><div style="font-size:32px;font-weight:600;letter-spacing:-.02em">'+eur(ts)+' <span class="muted" style="font-size:14px;font-weight:500">sur '+eur(tc)+'</span></div><div class="muted" style="font-size:13px;margin-top:2px">Jour '+DAY+' sur '+DAYS+'</div></div>'+
@@ -271,31 +302,34 @@
   /* ---------- panneau de filtres (latéral) ---------- */
   function paintPanel(){ var el=document.getElementById('fpanel'); if(!S.fopen||!D){ el.innerHTML=''; return; }
     var f=S.f, old=el.querySelector('.fbody'), top=old?old.scrollTop:0, anim=S.fanim; S.fanim=false;
-    function chip(k,v,l,on){ return '<button class="fchip" data-f="'+k+'" data-v="'+esc(v)+'" aria-pressed="'+!!on+'">'+esc(l)+'</button>'; }
+    var P_=per(), curK=D.today.month, years=[], seen={};
+    (D.keys||[]).forEach(function(k){ var y=k.slice(0,4); if(!seen[y]){ seen[y]=1; years.push(y); } }); years.sort().reverse();
+    function opt(v,l,sel){ return '<option value="'+esc(v)+'"'+(sel?' selected':'')+'>'+esc(l)+'</option>'; }
+    function seg(k,list){ return '<div class="fseg" role="group">'+list.map(function(p){ return '<button data-f="'+k+'" data-v="'+esc(p[0])+'" aria-pressed="'+(f[k]===p[0])+'">'+esc(p[1])+'</button>'; }).join('')+'</div>'; }
     function sec(t,b){ return '<div class="fsec"><h3>'+t+'</h3>'+b+'</div>'; }
-    var all=!Object.keys(f.off).some(function(k){return f.off[k]}), mx=Math.max(100,Math.ceil(maxOf(D.cats.map(function(c){return c.spent}))/10)*10);
-    var body=sec('Graphique de l\'accueil','<div class="fchips">'+[['solde','Solde'],['dr','Dépenses et revenus']].map(function(p){return chip('graph',p[0],p[1],f.graph===p[0])}).join('')+'</div>')+
-      sec('Postes','<div class="fchips">'+chip('postes_all','all','Tous',all)+D.cats.map(function(c){return chip('poste',c.id,c.n,!f.off[c.id])}).join('')+'</div>')+
-      sec('Montant minimum dépensé ce mois','<div class="frange"><input type="range" id="fmin" min="0" max="'+mx+'" step="10" value="'+f.min+'" aria-label="Montant minimum dépensé par poste"><output id="fminv">'+(f.min?f.min+' €':'Aucun')+'</output></div>')+
-      sec('Statut','<div class="fchips">'+chip('flag','alertes','Alertes seulement',f.alertes)+'</div>')+
-      sec('Moyenne calculée sur','<div class="fchips">'+[['3','3 mois'],['6','6 mois'],['12','12 mois']].map(function(p){return chip('moy',p[0],p[1],f.moy===p[0])}).join('')+'</div>');
-    var n=applyF(CATS).length;
+    var cats=D.cats.slice().sort(function(a,b){return a.n.localeCompare(b.n,'fr')}), pc=f.poste?cats.filter(function(c){return c.id===f.poste})[0]:null;
+    var months=[opt('all','Toute l\'année',P_.isYear)].concat(MOIS_L.map(function(n,i){ var v=(i<9?'0':'')+(i+1); return opt(v,n.charAt(0).toUpperCase()+n.slice(1),!P_.isYear&&P_.mo===v); }));
+    var body=sec('Période','<div class="frow2"><label class="fsel"><span>Année</span><select data-fsel="year" aria-label="Année">'+years.map(function(y){return opt(y,y,P_.y===y)}).join('')+'</select></label><label class="fsel"><span>Mois</span><select data-fsel="month" aria-label="Mois">'+months.join('')+'</select></label></div>')+
+      sec('Graphique',seg('graph',[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']]))+
+      sec('Poste et sous-poste','<label class="fsel"><span>Poste</span><select data-fsel="poste" aria-label="Poste">'+opt('','Tous les postes',!f.poste)+cats.map(function(c){return opt(c.id,c.n,f.poste===c.id)}).join('')+'</select></label>'+
+        '<label class="fsel" style="margin-top:8px"><span>Sous-poste</span><select data-fsel="sous" aria-label="Sous-poste"'+(pc?'':' disabled')+'>'+opt('',pc?'Tous les sous-postes':'Choisir d\'abord un poste',!f.sous)+(pc?pc.subs.map(function(s){return opt(s.n,s.n,f.sous===s.n)}).join(''):'')+'</select></label>')+
+      sec('Moyenne calculée sur',seg('moy',[['3','3 mois'],['6','6 mois'],['12','12 mois']]));
     el.innerHTML='<div class="fwrap"><div class="scrim" data-fc="close"></div><div class="fin"><section class="fpanel fpB'+(anim?' anim':'')+'" role="dialog" aria-modal="true" aria-label="Filtres">'+
       '<div class="fhead"><h2>Filtres'+(fcount()?' <span class="muted" style="font-weight:500;font-size:14px">· '+fcount()+' actif'+(fcount()>1?'s':'')+'</span>':'')+'</h2><button class="iconbtn" data-fc="close" aria-label="Fermer les filtres">'+ico(I.close)+'</button></div><div class="fbody">'+body+'</div>'+
-      '<div class="ffoot"><button class="fbtn ghost" data-fc="reset">Réinitialiser</button><button class="fbtn" data-fc="close">Voir '+n+' poste'+(n>1?'s':'')+'</button></div></section></div></div>';
+      '<div class="ffoot"><button class="fbtn ghost" data-fc="reset">Réinitialiser</button><button class="fbtn" data-fc="close">Afficher</button></div></section></div></div>';
     var nb=el.querySelector('.fbody'); if(nb) nb.scrollTop=top; if(anim){ var c=el.querySelector('[data-fc="close"].iconbtn'); if(c) c.focus(); } }
   var fp=document.getElementById('fpanel');
   fp.addEventListener('click',function(e){ var b=e.target.closest('[data-fc],[data-f]'); if(!b) return;
     if(b.dataset.fc==='close'){ S.fopen=false; paintPanel(); return; }
     if(b.dataset.fc==='reset'){ S.f=fcopy(); render(); return; }
-    var k=b.dataset.f, v=b.dataset.v;
-    if(k==='graph'||k==='moy') S.f[k]=v;
-    else if(k==='poste') S.f.off[v]=S.f.off[v]?0:1;
-    else if(k==='postes_all'){ var all=!Object.keys(S.f.off).some(function(x){return S.f.off[x]}); S.f.off={}; if(all) D.cats.forEach(function(c){S.f.off[c.id]=1}); }
-    else if(k==='flag') S.f[v]=S.f[v]?0:1;
+    S.f[b.dataset.f]=b.dataset.v; render(); });
+  fp.addEventListener('change',function(e){ var k=e.target.dataset&&e.target.dataset.fsel; if(!k) return;
+    var v=e.target.value, curY=D.today.month.slice(0,4), curM=D.today.month.slice(5,7);
+    if(k==='year'){ S.f.year=v===curY?'':v; }
+    else if(k==='month'){ S.f.month=v===curM?'':v; }
+    else if(k==='poste'){ S.f.poste=v; S.f.sous=''; }
+    else if(k==='sous'){ S.f.sous=v; }
     render(); });
-  fp.addEventListener('input',function(e){ if(e.target.id==='fmin'){ S.f.min=+e.target.value; document.getElementById('fminv').textContent=S.f.min?S.f.min+' €':'Aucun'; } });
-  fp.addEventListener('change',function(e){ if(e.target.id==='fmin') render(); });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&S.fopen){ S.fopen=false; paintPanel(); } });
 
   /* ---------- interactions ---------- */
@@ -318,6 +352,8 @@
       S.ruleBusy=true; S.ruleErr=null; render(); authed('saveRules',[(D.rules||[]).concat([{motif:motif,poste:poste,sous:String(R.sous||'').trim(),montant:String(R.montant||'').replace(',','.').replace(/[^0-9.]/g,'')}])]).then(function(){ S.ruleBusy=false; S.rule={motif:'',poste:'',nouveau:'',sous:'',montant:''}; return load(true); }).catch(function(err){ S.ruleBusy=false; S.ruleErr=errMsg(err); render(); }) }
     else if(el.dataset.aopen){S.tab='home';S.open=el.dataset.aopen;render();window.scrollTo(0,0)}
     else if(el.dataset.atab){S.tab=el.dataset.atab;S.open=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.act==='forceupdate'){ var jobs=[]; if(navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){return r.unregister()})); })); if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){return caches.delete(k)})); })); Promise.all(jobs).then(function(){ location.reload(); }); }
+    else if(el.dataset.act==='clearposte'){S.f.poste='';S.f.sous='';render()}
     else if(el.dataset.act==='alerts'){S.tab='alerts';S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='alertsclose'){S.tab='home';render();window.scrollTo(0,0)}
     else if(el.dataset.act==='landtoggle'){S.landOpen=!S.landOpen;render()}
@@ -370,6 +406,8 @@
     if(document.hidden){ hiddenAt=Date.now(); }
     else if(hiddenAt&&Lock.enabled()&&Date.now()-hiddenAt>60000&&S.stage==='ready'){ S.stage='lock'; S.fopen=false; render(); doUnlock(); }
   });
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+  if('serviceWorker' in navigator){ var hadCtl=!!navigator.serviceWorker.controller, reloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){ if(!hadCtl||reloaded) return; reloaded=true; location.reload(); });
+    navigator.serviceWorker.register('sw.js').then(function(r){ if(r&&r.update) r.update(); }).catch(function(){}); }
   boot();
 })();

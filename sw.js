@@ -1,3 +1,4 @@
+// build 2026-10-25-filtres
 // Réseau d'abord (mises à jour immédiates), cache en secours pour l'ouverture hors ligne.
 var CACHE = 'banque-shell';
 var SHELL = ['./', 'index.html', 'style.css', 'app.js', 'lib.js', 'google.js', 'lock.js', 'config.js', 'manifest.webmanifest', 'icon-192.png'];

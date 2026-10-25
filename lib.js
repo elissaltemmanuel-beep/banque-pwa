@@ -184,6 +184,10 @@ function aggregate(rows, todayIso, opts) {
   for (i = 11; i >= 0; i--) months.push(shiftMonth_(cur, -i));
   for (i = 12; i >= 1; i--) histKeys.push(shiftMonth_(cur, -i));
 
+  var firstK = rows.length ? rows.reduce(function (m, r) { return r[0] < m ? r[0] : m; }, rows[0][0]).slice(0, 7) : cur;
+  var nAll = Math.min(48, (y - +firstK.slice(0, 4)) * 12 + (m - +firstK.slice(5, 7)) + 1), allKeys = [];
+  for (i = nAll - 1; i >= 0; i--) allKeys.push(shiftMonth_(cur, -i));
+
   var spend = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
   var depDay = {}, revDay = {};
   var yr = {}, ytdCut = todayIso.slice(5);
@@ -346,6 +350,25 @@ function aggregate(rows, todayIso, opts) {
     });
   });
 
+  // tous les mois disponibles (pour le filtre de période)
+  var seriesAll = [], carryA = null, daily = {}, carryD = null, dStart = Math.max(0, allKeys.length - 36);
+  allKeys.forEach(function (k, ix) {
+    var b = k === cur ? solde : lastBal[k];
+    if (b == null) b = carryA;
+    if (b == null) b = 0;
+    carryA = b;
+    seriesAll.push({ k: k, bal: round2_(b), rev: round2_(rev[k] || 0), dep: round2_(dep[k] || 0) });
+    var dimk = daysInMonth_(+k.slice(0, 4), +k.slice(5, 7)), bb = [], dd = [], rr = [];
+    for (var dj = 1; dj <= dimk; dj++) {
+      var isoj = k + '-' + pad2_(dj);
+      if (dailyBal[isoj] != null) carryD = dailyBal[isoj];
+      bb.push(carryD == null ? null : round2_(carryD));
+      dd.push(round2_((depDay[k] && depDay[k][dj]) || 0));
+      rr.push(round2_((revDay[k] && revDay[k][dj]) || 0));
+    }
+    if (ix >= dStart) daily[k] = { b: bb, d: dd, r: rr };
+  });
+
   // postes (catégories parentes) et sous-postes (catégories)
   var cats = [];
   Object.keys(spend).forEach(function (par) {
@@ -355,11 +378,12 @@ function aggregate(rows, todayIso, opts) {
     var subs = Object.keys(subSpend[par]).map(function (c) {
       return {
         n: c, spent: round2_(subSpend[par][c][cur] || 0),
-        hist: histKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); })
+        hist: histKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); }),
+        all: allKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); })
       };
     }).filter(function (x) { return x.spent || x.hist.some(function (v) { return v; }); })
       .sort(function (a, b) { return b.spent - a.spent; });
-    cats.push({ id: slug_(par), n: par, spent: s, hist: h, subs: subs, ops: [] });
+    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), subs: subs, ops: [] });
   });
   cats.sort(function (a, b) { return b.spent - a.spent; });
   var catIdx = {};
@@ -386,6 +410,9 @@ function aggregate(rows, todayIso, opts) {
     },
     curve: { bal: bal, proj: pts, depCum: depCum, revCum: revCum, habit: habit },
     months: series,
+    keys: allKeys,
+    seriesAll: seriesAll,
+    daily: daily,
     cats: cats,
     subs: detectSubscriptions_(rows, todayIso),
     bilan: bilan_(yr, y),
