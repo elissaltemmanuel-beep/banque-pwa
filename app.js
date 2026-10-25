@@ -576,7 +576,7 @@
     else if(el.dataset.act==='allpostes'){S.all=!S.all;render()}
     else if(el.dataset.act==='close'){S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
-    else if(el.dataset.act==='retry'){boot()}
+    else if(el.dataset.act==='retry'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='unlock'){doUnlock()}
     else if(el.dataset.act==='refresh'){refresh(true)}
     else if(el.dataset.act==='signin'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
