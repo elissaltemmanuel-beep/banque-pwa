@@ -31,18 +31,18 @@
     ELAPSED=P_.cur? DAY/DAYS : 1;
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
     function calc(all,hist,spentNow){
-      if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1)};
+      if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), prior=all.slice(Math.max(0,first-k),first), am=prior.length? sum(prior)/prior.length : sum(all)/Math.max(all.length,1);
-      return {spent:spent,avg:Math.max(am*monthsN,1)}; }
+      return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent);
-      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0}; })}; }); }
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
     if(over<MIN_EUR) return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'};
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
-  function srt(arr,ec){ return arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); }
+  function srt(arr,ec){ var s=arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); return S.sortDesc? s : s.reverse(); }
   function applyF(list){ return list; }
   function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(f.year&&D&&f.year!==D.today.month.slice(0,4)||f.month&&D&&f.month!==D.today.month.slice(5,7))n++; if(f.poste)n++; if(f.sous)n++; if(f.moy!=='12')n++; return n; }
 
@@ -87,9 +87,9 @@
       return '<span class="strack"><i class="'+x.k+'" style="left:0" data-w="'+(Math.min(x.pct,130)/130*100)+'"></i><span class="tick" style="left:'+(100/130*100)+'%"></span></span>'; }
     var items=cats.map(info), body;
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
-    else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'</span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
+    else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'<small class="muted" style="display:block;font-size:10.5px;font-weight:500">moy. '+eur(x.c.avgm||0)+' / mois</small></span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
     var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Le repère marque 100 % de la moyenne du poste. Triés du plus dépensé au moins dépensé.';
-    return '<div class="card syn"><div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
+    return '<div class="card syn"><div class="row" style="justify-content:flex-end"><button class="chip" data-act="sortdir" style="cursor:pointer;padding:5px 11px">Ordre '+(S.sortDesc?'décroissant ↓':'croissant ↑')+'</button></div><div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
       '<p class="gapl muted" style="text-align:center;margin:4px 0">'+(ecarts?'Rythme attendu au centre · à gauche en retard · à droite en avance':'Montant dépensé et % de la moyenne du poste')+'</p>'+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
       '<div class="gapl muted" style="margin-top:6px">'+cap+'</div></div>'; }
 
@@ -191,8 +191,9 @@
   function homeScreen(){
     return header()+syncNote()+'<div><div class="muted" style="font-size:14px">'+(D.soldeEstime?'Solde estimé (export du '+esc(fmtDate(D.proj.landing?D.proj.landing.exportDate:D.stats.lastRealDate))+')':'Solde BoursoBank')+'</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
     landingCard()+chartCard()+
-    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList();
+    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList();
   }
+  function avgLine(){ var t=CATS.reduce(function(s,c){return s+(c.avgm||0)},0); return '<p class="muted" style="font-size:13px;margin:-6px 0 0">Dépenses moyennes : <b style="color:var(--text)">'+eur(t)+'</b> par mois, sur '+S.f.moy+' mois.</p>'; }
   function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):'Postes'; }
   function postesList(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null;
     if(!c) return compactCard(CATS);
@@ -355,6 +356,7 @@
     else if(el.dataset.aopen){S.tab='home';S.open=el.dataset.aopen;render();window.scrollTo(0,0)}
     else if(el.dataset.atab){S.tab=el.dataset.atab;S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='forceupdate'){ var jobs=[]; if(navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){return r.unregister()})); })); if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){return caches.delete(k)})); })); Promise.all(jobs).then(function(){ location.reload(); }); }
+    else if(el.dataset.act==='sortdir'){S.sortDesc=!S.sortDesc;render()}
     else if(el.dataset.act==='clearposte'){S.f.poste='';S.f.sous='';render()}
     else if(el.dataset.act==='alerts'){S.tab='alerts';S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='alertsclose'){S.tab='home';render();window.scrollTo(0,0)}
