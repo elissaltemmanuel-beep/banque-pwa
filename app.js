@@ -32,7 +32,7 @@
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
     function calc(all,hist,spentNow){
       if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
-      var spent=sum(P_.idxs.map(function(i){return all[i]||0})), prior=all.slice(Math.max(0,first-k),first), am=prior.length? sum(prior)/prior.length : sum(all)/Math.max(all.length,1);
+      var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, prior=all.slice(Math.max(0,first-k),first).map(pos), am=prior.length? sum(prior)/prior.length : sum(all.map(pos))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent);
       return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,
@@ -42,7 +42,7 @@
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
     if(over<MIN_EUR) return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'};
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
-  function srt(arr,ec){ var s=arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); return S.sortDesc? s : s.reverse(); }
+  function srt(arr,ec){ var s=arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); return s; }
   function applyF(list){ return list; }
   function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(f.year&&D&&f.year!==D.today.month.slice(0,4)||f.month&&D&&f.month!==D.today.month.slice(5,7))n++; if(f.poste)n++; if(f.sous)n++; if(f.moy!=='12')n++; return n; }
 
@@ -88,8 +88,8 @@
     var items=cats.map(info), body;
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
     else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'<small class="muted" style="display:block;font-size:10.5px;font-weight:500">moy. '+eur(x.c.avgm||0)+' / mois</small></span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
-    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Le repère marque 100 % de la moyenne du poste. Triés du '+(S.sortDesc?'plus dépensé au moins dépensé':'moins dépensé au plus dépensé')+'.';
-    return '<div class="card syn"><div class="row" style="justify-content:flex-end"><button class="chip" data-act="sortdir" style="cursor:pointer;padding:5px 11px">Ordre '+(S.sortDesc?'décroissant ↓':'croissant ↑')+'</button></div><div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
+    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Le repère marque 100 % de la moyenne du poste. Triés du plus dépensé au moins dépensé.';
+    return '<div class="card syn"><div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
       '<p class="gapl muted" style="text-align:center;margin:4px 0">'+(ecarts?'Rythme attendu au centre · à gauche en retard · à droite en avance':'Montant dépensé et % de la moyenne du poste')+'</p>'+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
       '<div class="gapl muted" style="margin-top:6px">'+cap+'</div></div>'; }
 
@@ -116,19 +116,22 @@
 
     if(bars){
       /* barres mensuelles : 12 mois qui se terminent au mois choisi (ou les 12 mois de l'année choisie) */
-      var all=D.keys||[], endI=PR.idxs.length? PR.idxs[PR.idxs.length-1] : all.length-1, startI;
-      if(PR.isYear&&PR.idxs.length){ startI=PR.idxs[0]; endI=Math.min(startI+11,all.length-1); } else startI=Math.max(0,endI-11);
+      var all=D.keys||[], endI=all.length-1, startI;
+      if(PR.isYear&&PR.idxs.length){ startI=PR.idxs[0]; endI=Math.min(startI+11,all.length-1); } else { startI=Math.max(0,endI-11); if(PR.idxs.length&&PR.idxs[0]<startI){ startI=PR.idxs[0]; endI=Math.min(startI+11,all.length-1); } }
       var idx=[]; for(var q=startI;q<=endI;q++) idx.push(q);
       var vals, name, curLast=all[endI]===D.today.month;
       if(poste){ var src=(sous||poste).all||[]; vals=idx.map(function(i){return src[i]||0}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:''); }
       else { var ser=D.seriesAll||[]; vals=idx.map(function(i){ var o=ser[i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:o.bal) : 0; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':'Solde de fin de mois'; title=PR.isYear?PR.label:'Les 12 derniers mois'; }
       var projV=null; if(!poste&&curLast) projV=gr==='dep'?P.depEnd:gr==='rev'?P.revEnd:P.value;
-      var mx=niceCeil(Math.max(maxOf(vals),projV||0,1)), bw=330/idx.length, g=grid(mx), hi=PR.idxs.length&&!PR.isYear? idx.indexOf(PR.idxs[0]) : idx.length-1;
+      var mx=niceCeil(Math.max(maxOf(vals),projV||0,1)), bw=330/idx.length, g=grid(mx), hi=PR.idxs.length&&!PR.isYear? idx.indexOf(PR.idxs[0]) : -1;
+      function kv(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
       N=idx.length; var col=poste?'var(--accent)':COL[gr];
-      idx.forEach(function(ii,n){ var cx=10+bw*(n+.5), v=vals[n], key=all[ii]||'', lab=MOIS_INITIALES[+key.slice(5,7)-1]||'';
-        g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(v,mx)+'" width="16" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="'+(n===hi||PR.isYear?col:'var(--neu)')+'"/>';
-        if(n===idx.length-1&&projV!=null) g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(projV,mx)+'" width="16" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>'+(S.hide?'':txt((cx+10).toFixed(1),(Y(projV,mx)-6),eur(projV),{a:'end',fill:'var(--text)',w:600}));
-        g+=txt(cx.toFixed(1),156,lab,{a:'middle',fill:n===hi?'var(--text)':'var(--muted)',w:n===hi?600:0}); });
+      idx.forEach(function(ii,n){ var cx=10+bw*(n+.5), v=vals[n], key=all[ii]||'', lab=MOIS_INITIALES[+key.slice(5,7)-1]||'', sel=n===hi, last=n===idx.length-1;
+        g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[+key.slice(5,7)-1]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="160" fill="transparent"/>'+
+          '<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(v,mx)+'" width="16" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
+        if(last&&projV!=null) g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(projV,mx)+'" width="16" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>';
+        if(!S.hide) g+=txt(cx.toFixed(1),(Y(last&&projV!=null?projV:v,mx)-4),kv(last&&projV!=null?projV:v),{a:'middle',size:8.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:500});
+        g+=txt(cx.toFixed(1),156,lab,{a:'middle',fill:sel?'var(--text)':'var(--muted)',w:sel?600:0})+'</g>'; });
       var nz=vals.filter(function(v){return v>0}), mean=nz.length? sum(nz)/nz.length : 0;
       sum_= poste? ('Dépenses mensuelles du poste. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
         : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Fin de ce mois : '+eur(P.value)+(P.salary.expected>0?', paie attendue vers le '+P.salary.day+' comprise':'')+'.'+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' Le point le plus bas, juste avant la paie, est de '+eur(P.landing.value)+' au '+fmtDate(P.landing.date)+'.':''):'')
@@ -160,6 +163,7 @@
         leg=lg(COL[gr],'',isD?'Dépenses':'Revenus')+(isD&&hab.length?lg('var(--muted)','4 4','Rythme habituel'):'')+(PR.cur?'<span>Pointillés : projection</span>':'');
       }
     }
+    sum_=sum_.replace(/\.{2,}/g,'.');
     var showTog=!poste&&!PR.isYear;
     return '<div class="card"><div class="row"><h2 style="font-size:16px">'+esc(title)+'</h2>'+badge+'</div>'+
       (showTog?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Affichage du graphique"><button data-per="mois" aria-pressed="'+(S.per==='mois')+'">Mois</button><button data-per="annee" aria-pressed="'+(S.per!=='mois')+'">12 mois</button></div></div>':'')+
@@ -337,7 +341,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -353,10 +357,10 @@
     else if(el.dataset.act==='rulesave'){ var R=S.rule||{}, poste=R.poste==='__new'?String(R.nouveau||'').trim():R.poste, motif=String(R.motif||'').trim();
       if(!motif||!poste){ S.ruleErr='Indiquez le texte du libellé et le poste.'; render(); return; }
       S.ruleBusy=true; S.ruleErr=null; render(); authed('saveRules',[(D.rules||[]).concat([{motif:motif,poste:poste,sous:String(R.sous||'').trim(),montant:String(R.montant||'').replace(',','.').replace(/[^0-9.]/g,'')}])]).then(function(){ S.ruleBusy=false; S.rule={motif:'',poste:'',nouveau:'',sous:'',montant:''}; return load(true); }).catch(function(err){ S.ruleBusy=false; S.ruleErr=errMsg(err); render(); }) }
+    else if(el.dataset.bar){ var bk=el.dataset.bar, ck=D.today.month; S.f.year=bk.slice(0,4)===ck.slice(0,4)?'':bk.slice(0,4); S.f.month=bk===ck?'':bk.slice(5,7); render(); }
     else if(el.dataset.aopen){S.tab='home';S.open=el.dataset.aopen;render();window.scrollTo(0,0)}
     else if(el.dataset.atab){S.tab=el.dataset.atab;S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='forceupdate'){ var jobs=[]; if(navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){return r.unregister()})); })); if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){return caches.delete(k)})); })); Promise.all(jobs).then(function(){ location.reload(); }); }
-    else if(el.dataset.act==='sortdir'){S.sortDesc=!S.sortDesc;render()}
     else if(el.dataset.act==='clearposte'){S.f.poste='';S.f.sous='';render()}
     else if(el.dataset.act==='alerts'){S.tab='alerts';S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='alertsclose'){S.tab='home';render();window.scrollTo(0,0)}
