@@ -379,6 +379,28 @@
       svg2+='</svg>';
       h.push(sect('Cascade du mois','<div class="muted" style="font-size:12.5px;line-height:1.4">De votre solde du 1er au solde actuel : revenus reçus puis dépenses par poste.</div>'+svg2+'<div class="muted" style="font-size:11.5px;line-height:1.4">Les dépenses déjà programmées mais pas encore passées ne sont pas comptées ici.</div>'));
     }
+    // carte de chaleur des jours de dépense
+    if(D.daily&&Object.keys(D.daily).length){ var dkeys=Object.keys(D.daily).sort(), off=Math.max(Math.min(S.heat||0,0),-(dkeys.length-1)), hk=dkeys[dkeys.length-1+off], hd=D.daily[hk].d, allV=[]; dkeys.forEach(function(k){ D.daily[k].d.forEach(function(v){ if(v>0) allV.push(v); }); });
+      allV.sort(function(p,q){return p-q}); var cap=allV.length? allV[Math.floor(allV.length*0.9)] : 1, firstDow=(new Date(hk+'-01T00:00:00Z').getUTCDay()+6)%7, hc='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+['L','M','M','J','V','S','D'].map(function(x){return '<div class="muted" style="font-size:10px;text-align:center">'+x+'</div>'}).join('');
+      for(var q0=0;q0<firstDow;q0++) hc+='<div></div>';
+      var todayK=D.today.iso;
+      for(var dj=1;dj<=hd.length;dj++){ var v=hd[dj-1]||0, iso2=hk+'-'+(dj<10?'0':'')+dj, fut=iso2>todayK, al=v>0?(0.14+0.72*Math.min(v/cap,1)):0;
+        hc+='<div style="min-height:40px;border-radius:10px;border:1px solid var(--rim-soft);background:'+(v>0?'color-mix(in srgb,var(--accent) '+Math.round(al*100)+'%,transparent)':'var(--glass)')+';opacity:'+(fut?.35:1)+';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px"><span style="font-size:10.5px;font-weight:500">'+dj+'</span>'+(v>0&&!S.hide?'<span style="font-size:9.5px;font-weight:600">'+kfmt(v)+'</span>':'')+'</div>'; }
+      hc+='</div>';
+      h.push(sect('Carte de chaleur des dépenses',
+        '<div class="row"><button class="chip" data-act="heatprev" style="cursor:pointer;padding:5px 12px" aria-label="Mois précédent">‹</button><b style="font-size:14px">'+esc(MOIS_L[+hk.slice(5,7)-1].charAt(0).toUpperCase()+MOIS_L[+hk.slice(5,7)-1].slice(1))+' '+hk.slice(0,4)+'</b><button class="chip" data-act="heatnext" style="cursor:pointer;padding:5px 12px;'+(off>=0?'opacity:.4':'')+'" aria-label="Mois suivant"'+(off>=0?' disabled':'')+'>›</button></div>'+hc+
+        '<div class="muted" style="font-size:11.5px;line-height:1.4">Plus la case est foncée, plus il est sorti d\'argent ce jour-là. La banque date les opérations aux jours ouvrés : les week-ends restent vides.</div>'));
+    }
+    // dépenses par poste sur l'année (barres empilées)
+    if(D.keys&&CATS.length){ var PRy=per().y, ix=[]; for(var mm=1;mm<=12;mm++) ix.push(D.keys.indexOf(PRy+'-'+(mm<10?'0':'')+mm));
+      var tot_=CATS.map(function(c){ return {c:c,t:sum(ix.map(function(i){return i<0?0:Math.max(c.all[i]||0,0)}))}; }).filter(function(x){return x.t>0}).sort(function(p,q){return q.t-p.t}), top5=tot_.slice(0,5), rest5=tot_.slice(5);
+      if(top5.length){ var cols=ix.map(function(i){ if(i<0) return null; var parts=top5.map(function(x){return Math.max(x.c.all[i]||0,0)}); parts.push(sum(rest5.map(function(x){return Math.max(x.c.all[i]||0,0)}))); return parts; }), mxS=niceCeil(Math.max.apply(null,cols.map(function(p){return p?sum(p):0}).concat([1]))), HH=110, bw2=330/12, sv='<svg viewBox="0 0 350 130" width="100%" role="img" aria-label="Dépenses par poste, mois par mois, sur l\'année '+PRy+'"><line x1="10" x2="340" y1="120" y2="120" stroke="var(--rim-soft)"/>';
+        cols.forEach(function(p,n){ var cx=10+bw2*(n+.5), yb=120; if(p){ p.forEach(function(v,k){ var hh=Math.min(v/mxS*HH,HH); if(hh<=0) return; yb-=hh; sv+='<rect x="'+(cx-9).toFixed(1)+'" y="'+yb.toFixed(1)+'" width="18" height="'+Math.max(hh-0.8,0.5).toFixed(1)+'" rx="2" fill="'+PALETTE[k<5?k:7]+'"/>'; }); }
+          sv+='<text x="'+cx.toFixed(1)+'" y="130" text-anchor="middle" fill="var(--muted)" font-size="9">'+MOIS_INITIALES[n]+'</text>'; });
+        sv+='</svg>';
+        h.push(sect('Dépenses par poste · '+PRy,sv+'<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px" class="muted">'+top5.map(function(x,k){return '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:9px;height:9px;border-radius:3px;background:'+PALETTE[k]+';display:inline-block"></i>'+esc(x.c.n)+'</span>'}).join('')+(rest5.length?'<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:9px;height:9px;border-radius:3px;background:'+PALETTE[7]+';display:inline-block"></i>Autres</span>':'')+'</div><div class="muted" style="font-size:11.5px">Année choisie dans les filtres (par défaut l\'année en cours). Échelle : '+kfmt(mxS)+' € maximum par mois.</div>'));
+      }
+    }
     // commerçants et comparaison
     if((D.merchants||[]).length) h.push(sect('Où part votre argent (12 mois)',D.merchants.map(function(m){ return aline(esc(m.n)+'<div class="muted" style="font-size:11.5px">'+m.c+' achat'+(m.c>1?'s':'')+'</div>',eur(m.s)); }).join('')));
     var sa=D.seriesAll||[], ly=prevKey(cur_(),-12), lyS=sa.filter(function(x){return x.k===ly})[0], done=sa.filter(function(x){return x.k<cur_()}).slice(-12), top3=done.slice().sort(function(a,b){return b.dep-a.dep}).slice(0,3);
@@ -536,6 +558,8 @@
     else if(el.dataset.act==='forceupdate'){ var jobs=[]; if(navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){return r.unregister()})); })); if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){return caches.delete(k)})); })); Promise.all(jobs).then(function(){ location.reload(); }); }
     else if(el.dataset.act==='marginup'){S.margin=Math.min((S.margin||0)+100,5000);savePrefs();render()}
     else if(el.dataset.act==='margindn'){S.margin=Math.max((S.margin||0)-100,0);savePrefs();render()}
+    else if(el.dataset.act==='heatprev'){S.heat=(S.heat||0)-1;render()}
+    else if(el.dataset.act==='heatnext'){S.heat=Math.min((S.heat||0)+1,0);render()}
     else if(el.dataset.act==='clearposte'){S.f.poste='';S.f.sous='';render()}
     else if(el.dataset.act==='alerts'){S.tab='alerts';S.open=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='alertsclose'){S.tab='home';render();window.scrollTo(0,0)}
