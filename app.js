@@ -24,6 +24,8 @@
   var MOIS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   function kfmt(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
   function addIso(iso,n){ var p=iso.split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n)).toISOString().slice(0,10); }
+  function spark(arr){ if(!arr||arr.length<3) return ''; var v=arr.slice(-12).map(function(x){return Math.max(x||0,0)}), mx=Math.max.apply(null,v.concat([1])), W=30,H=11, p=v.map(function(y,i){ return (i/(v.length-1)*W).toFixed(1)+','+(H-1-y/mx*(H-2)).toFixed(1); }); var last=p[p.length-1].split(',');
+    return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true" style="flex:none;margin-right:5px"><polyline points="'+p.join(' ')+'" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="'+last[0]+'" cy="'+last[1]+'" r="2" fill="var(--accent)"/></svg>'; }
   var PALETTE=['var(--accent)','var(--c2)','var(--ok)','var(--warn)','var(--bad)','var(--c1)','var(--neu)','var(--muted)'];
   function sum(arr){ return arr.reduce(function(s,v){return s+v},0); }
   /* période choisie dans les filtres : un mois (par défaut le mois en cours) ou une année entière */
@@ -91,7 +93,7 @@
     var items=cats.map(info), body;
     var donut=!sub&&S.postView==='anneau';
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
-    else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'<small class="muted" style="display:block;font-size:10.5px;font-weight:500">moy. '+eur(x.c.avgm||0)+' / mois</small></span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
+    else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'<small class="muted" style="display:flex;align-items:center;white-space:nowrap;font-size:10.5px;font-weight:500">'+spark(x.c.all)+'moy. '+eur(x.c.avgm||0)+'</small></span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
     if(donut&&items.length){ var pool2=items.filter(function(x){return x.c.spent>0}).sort(function(p,q){return q.c.spent-p.c.spent}), tot=sum(pool2.map(function(x){return x.c.spent})), top=pool2.slice(0,7), rest=pool2.slice(7), restV=sum(rest.map(function(x){return x.c.spent}));
       var slices=top.map(function(x,n){return {n:x.c.n,v:x.c.spent,id:x.c.id,col:PALETTE[n]}}); if(restV>0) slices.push({n:'Autres ('+rest.length+')',v:restV,id:'',col:PALETTE[7]});
       var R=56,CIR=2*Math.PI*R,off=0, arcs=slices.map(function(s){ var len=s.v/tot*CIR, e='<circle cx="80" cy="80" r="'+R+'" fill="none" stroke="'+s.col+'" stroke-width="22" stroke-dasharray="'+Math.max(len-1.5,0.5).toFixed(2)+' '+(CIR-Math.max(len-1.5,0.5)).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 80 80)"/>'; off+=len; return e; }).join('');
@@ -331,6 +333,24 @@
     (D.dups||[]).forEach(function(d){ chk.push(aline('Paiement identique ×'+d.n+' le '+esc(fmtDate(d.d))+'<div class="muted" style="font-size:11.5px">'+esc(d.l)+' · doublon possible ?</div>','−'+eur(-d.a*d.n,true),'warnt')); });
     if((D.excOps||[]).length){ chk.push('<div class="muted" style="font-size:12px;margin-top:6px">Dépenses ponctuelles de 12 mois :</div>'); D.excOps.slice(0,5).forEach(function(o){ chk.push(aline(esc(o[1])+'<div class="muted" style="font-size:11.5px">'+esc(fmtDate(o[0]))+' · '+esc(o[2])+'</div>','−'+eur(-o[3],true))); }); }
     if(chk.length) h.push(sect('À vérifier',chk.join(''),(D.dups||[]).length?['warn',(D.dups.length)+' doublon'+(D.dups.length>1?'s':'')+' possible'+(D.dups.length>1?'s':'')]:null));
+    // provision pour dépenses ponctuelles
+    if(D.kpi&&D.kpi.t12&&D.kpi.t12.exc>0){ var tE=D.kpi.t12.exc, nk=(D.keys||[]).length, byP=CATS.map(function(c){ var e=(c.exc||[]).slice(Math.max(0,nk-12)); return {n:c.n,v:sum(e)}; }).filter(function(x){return x.v>0}).sort(function(p,q){return q.v-p.v}).slice(0,4);
+      h.push(sect('Dépenses ponctuelles à provisionner',
+        aline('Dépenses ponctuelles sur 12 mois<div class="muted" style="font-size:11.5px">Paiements de 500 € ou plus, hors abonnements</div>',eur(tE))+
+        aline('Soit, étalé sur l\'année','≈ '+eur(tE/12)+' / mois','warnt')+
+        byP.map(function(x){ return '<div class="row muted" style="font-size:12px;padding:2px 0"><span>'+esc(x.n)+'</span><span>'+eur(x.v)+'</span></div>'; }).join('')+
+        '<div class="muted" style="font-size:11.5px;line-height:1.4;margin-top:4px">C\'est une mesure de ce qui est arrivé, pas une consigne : ces dépenses ne reviennent pas forcément chaque année.</div>'));
+    }
+    // reste à charge santé
+    var HS=CATS.filter(function(c){return /sant/i.test(c.n)})[0];
+    if(HS&&HS.all){ var nk2=(D.keys||[]).length, from=Math.max(0,nk2-12), net=sum(HS.all.slice(from)), refSub=(HS.subs||[]).filter(function(s){return /remboursements? mutuelle/i.test(s.n)})[0], refund=refSub&&refSub.all?-sum(refSub.all.slice(from)):0, gross=net+refund;
+      if(gross>0) h.push(sect('Reste à charge santé (12 mois)',
+        aline('Dépenses de santé',eur(gross))+
+        aline('Remboursements de la mutuelle','−'+eur(refund),'okt')+
+        aline('<b>Reste à charge</b>',eur(net))+
+        (gross>0&&refund>0?'<div class="muted" style="font-size:12px">La mutuelle a remboursé '+Math.round(refund/gross*100)+' % de vos dépenses de santé.</div>':'<div class="muted" style="font-size:12px">Aucun remboursement de mutuelle repéré (libellé « Siaci »).</div>'),
+        refund>0?null:['warn','Remboursements non repérés']));
+    }
     // 6. abonnements
     var sb=[]; A.subsNew.forEach(function(x){ sb.push(aline('Nouveau : '+esc(x.n),eur(x.amt,true)+' / mois','warnt')); }); A.subsUp.forEach(function(x){ sb.push(aline('Hausse : '+esc(x.n),eur(x.hausse.from,true)+' → '+eur(x.hausse.to,true),'warnt')); });
     if(A.subsLeft.length) sb.push(aline(A.subsLeft.length+' prélèvement'+(A.subsLeft.length>1?'s':'')+' récurrent'+(A.subsLeft.length>1?'s':'')+' encore attendu'+(A.subsLeft.length>1?'s':'')+' ce mois-ci',eur(sum(A.subsLeft.map(function(x){return x.amt})),true)));
