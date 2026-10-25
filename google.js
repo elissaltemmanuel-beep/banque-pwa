@@ -188,7 +188,7 @@
       .then(function (rows) {
         if (!rows.length) throw new Error(sync && sync.error ? sync.error : 'Aucune opération pour le moment. Déposez un export CSV dans le dossier d\'export.');
         return readRules(id).then(function (rules) {
-          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules });
+          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules, exportDate: sync && sync.fileDate });
           data.sync = sync; data.rules = rules;
           return readBudgets(id).then(function (b) { data.budgets = b; return data; });
         });

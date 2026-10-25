@@ -168,6 +168,8 @@ function aggregate(rows, todayIso, opts) {
   opts = opts || {};
   rows = applyRules_(rows, opts.rules);
   var salaryRe = new RegExp(opts.salaryPattern || '(?!)', 'i');
+  // le solde du CSV est celui de la date d'export : les opérations datées après ne sont pas encore confirmées
+  var cut = opts.exportDate && opts.exportDate < todayIso ? opts.exportDate : todayIso;
   var cur = todayIso.slice(0, 7), y = +todayIso.slice(0, 4), m = +todayIso.slice(5, 7);
   var day = +todayIso.slice(8, 10), dim = daysInMonth_(y, m), remaining = dim - day, i, d;
 
@@ -186,7 +188,7 @@ function aggregate(rows, todayIso, opts) {
 
   rows.forEach(function (r) {
     var date = r[0], amt = r[7], par = r[6] || 'Non catégorisé', cat = r[5] || par, mk = date.slice(0, 7);
-    if (date > todayIso) { // opération programmée, pas encore passée
+    if (date > cut) { // opération programmée ou postérieure à l'export : pas encore confirmée
       futurs += amt;
       futursList.push([date, r[4] || r[2], amt]);
       if (salaryRe.test(r[2]) && amt > 0) {
@@ -296,12 +298,13 @@ function aggregate(rows, todayIso, opts) {
     var landIso = addDays_(payIso, -1);
     if (landIso < todayIso) landIso = todayIso;
     var landDays = Math.round((Date.UTC(+landIso.slice(0, 4), +landIso.slice(5, 7) - 1, +landIso.slice(8, 10)) -
-      Date.UTC(y, m - 1, day)) / 86400000);
+      Date.UTC(+cut.slice(0, 4), +cut.slice(5, 7) - 1, +cut.slice(8, 10))) / 86400000);
     var landFut = futursList.reduce(function (a, f) { return f[0] <= landIso ? a + f[2] : a; }, 0);
     landing = {
       date: landIso, payDate: payIso, payKnown: payKnown, payLate: payLate, days: landDays,
       payMin: payDays.length ? Math.min.apply(null, payDays) : null,
       payMax: payDays.length ? Math.max.apply(null, payDays) : null,
+      exportAge: daysBetween_(cut, todayIso), exportDate: cut,
       value: round2_(solde + landFut - (card90 / 90) * landDays),
       futSum: round2_(landFut), perDay: round2_(card90 / 90), spend: round2_((card90 / 90) * landDays),
       fut: futursList.filter(function (f) { return f[0] <= landIso; }).slice(-14)

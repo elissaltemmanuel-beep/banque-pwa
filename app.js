@@ -32,7 +32,7 @@
   function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(Object.keys(f.off).some(function(k){return f.off[k]}))n++; if(f.alertes)n++; if(f.moy!=='12')n++; if(f.min>0)n++; return n; }
 
   /* ---------- en-tête ---------- */
-  function exportInfo(){ var fd=D.sync&&D.sync.fileDate, stale=fd&&daysBetween(fd,D.today.iso)>7;
+  function exportInfo(){ var fd=D.sync&&D.sync.fileDate, stale=fd&&daysBetween(fd,D.today.iso)>2;
     return {label: fd? 'Export du '+fmtDate(fd) : 'Données au '+fmtDate(D.stats.lastRealDate), stale: !!stale}; }
   function alertsList(){ var a=[], L=D.proj&&D.proj.landing, ex=exportInfo();
     if(L&&L.days>0){ if(L.value<0) a.push({k:'bad',t:'Solde négatif prévu',m:'Atterrissage à '+eur(L.value)+' au '+fmtDate(L.date)+', juste avant la paie.',tab:'home'}); else if(L.value<300) a.push({k:'warn',t:'Atterrissage serré',m:'Il resterait '+eur(L.value)+' au '+fmtDate(L.date)+', juste avant la paie.',tab:'home'}); }
@@ -147,7 +147,8 @@
     var L=D.proj.landing, lab, sub;
     if(!L){ lab='Solde projeté au '+fmtDate(D.today.month+'-'+(DAYS<10?'0':'')+DAYS); sub='Paie non repérée dans l’historique.'; return landingHtml(lab,sub,D.proj.value); }
     lab='Atterrissage avant la paie';
-    if(L.days<=0) sub='Paie attendue d’un jour à l’autre.';
+    if(L.exportAge>1) sub='Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.';
+    else if(L.days<=0) sub='Paie attendue d’un jour à l’autre.';
     else sub='Au '+fmtDate(L.date)+', veille de la paie '+(L.payKnown?'programmée le '+fmtDate(L.payDate):'estimée au '+fmtDate(L.payDate)+(L.payMin!==L.payMax?' (versée entre le '+L.payMin+' et le '+L.payMax+' ces derniers mois)':''))+'.';
     return landingHtml(lab,sub.replace(/\.\.+$/,'.'),L.value);
   }
