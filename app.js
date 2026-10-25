@@ -35,8 +35,8 @@
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), prior=all.slice(Math.max(0,first-k),first), am=prior.length? sum(prior)/prior.length : sum(all)/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent);
-      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all}; })}; }); }
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
@@ -80,7 +80,8 @@
       cats=srt(keep,ecarts); }
     function info(c){ var s=status(c), pct=c.spent/c.avg*100, gap=(c.spent/c.avg-ELAPSED)*100, d=c.spent-c.avg*ELAPSED; return {c:c,s:s,k:s.k,pct:pct,gap:gap,d:d,pos:gap>=0}; }
     function lab(x){ return esc(x.c.n)+' : '+(ecarts?((x.pos?'+':'−')+Math.round(Math.abs(x.d))+' euros par rapport au rythme attendu'):(Math.round(x.c.spent)+' euros, '+Math.round(x.pct)+' % de la moyenne de '+Math.round(x.c.avg)+' euros'))+', '+x.s.t; }
-    function val(x){ return ecarts? '<span class="sval"><b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b></span>' : '<span class="sval"><b>'+eur(x.c.spent)+'</b><small class="muted">'+Math.round(x.pct)+' %</small></span>'; }
+    function up(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="white-space:nowrap">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
+    function val(x){ return ecarts? '<span class="sval"><b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>'+up(x)+'</span>' : '<span class="sval"><b>'+eur(x.c.spent)+'</b><small class="muted">'+Math.round(x.pct)+' %</small>'+up(x)+'</span>'; }
     function track(x){ var w;
       if(ecarts){ w=Math.min(Math.abs(x.gap)/45,1)*50; return '<span class="strack"><span class="axis"></span><i class="'+x.k+'" style="'+(x.pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i></span>'; }
       return '<span class="strack"><i class="'+x.k+'" style="left:0" data-w="'+(Math.min(x.pct,130)/130*100)+'"></i><span class="tick" style="left:'+(100/130*100)+'%"></span></span>'; }
@@ -188,7 +189,7 @@
       '<div class="row" style="font-size:14px;padding:8px 0 0;border-top:1px solid var(--rim-soft);margin-top:4px"><b>Atterrissage</b><b style="color:var(--accent)">'+eur(L.value)+'</b></div>'+
       '<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Les dépenses courantes sont la moyenne de vos paiements par carte sur 90 jours. Si l\'export est ancien, les opérations faites depuis ne sont pas comptées.</p></div>'; }
   function homeScreen(){
-    return header()+syncNote()+'<div><div class="muted" style="font-size:14px">Solde BoursoBank</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
+    return header()+syncNote()+'<div><div class="muted" style="font-size:14px">'+(D.soldeEstime?'Solde estimé (export du '+esc(fmtDate(D.proj.landing?D.proj.landing.exportDate:D.stats.lastRealDate))+')':'Solde BoursoBank')+'</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
     landingCard()+chartCard()+
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList();
   }

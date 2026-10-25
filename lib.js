@@ -191,15 +191,25 @@ function aggregate(rows, todayIso, opts) {
   var spend = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
   var depDay = {}, revDay = {};
   var yr = {}, ytdCut = todayIso.slice(5);
+  var upcP = {}, upcS = {};
   var futurs = 0, futursList = [], salaryByMonth = {}, salaryFirstDay = {}, salaryThisMonth = false, futureSalary = null;
   var card90 = 0, win90 = addDays_(todayIso, -90);
-  var solde = null, lastRealDate = null, internalCount = 0;
+  var solde = null, lastRealDate = null, internalCount = 0, presumed = 0;
 
   function bump(obj, k1, k2, v) { if (!obj[k1]) obj[k1] = {}; obj[k1][k2] = (obj[k1][k2] || 0) + v; }
 
   rows.forEach(function (r) {
     var date = r[0], amt = r[7], par = r[6] || 'Non catégorisé', cat = r[5] || par, mk = date.slice(0, 7);
-    if (date > cut) { // opération programmée ou postérieure à l'export : pas encore confirmée
+    if (date > todayIso) { // opération programmée, pas encore passée
+      if (amt < 0 && mk === cur && !INTERNAL_RE.test(par) && !INTERNAL_RE.test(cat) && INCOME_PARENTS.indexOf(par) < 0) {
+        upcP[par] = (upcP[par] || 0) - amt;
+        if (!upcS[par]) upcS[par] = {};
+        upcS[par][cat] = (upcS[par][cat] || 0) - amt;
+        // une dépense programmée ce mois-ci compte dans les dépenses du mois
+        bump(spend, par, mk, -amt);
+        if (!subSpend[par]) subSpend[par] = {};
+        bump(subSpend[par], cat, mk, -amt);
+      }
       futurs += amt;
       futursList.push([date, r[4] || r[2], amt]);
       if (salaryRe.test(r[2]) && amt > 0) {
@@ -208,10 +218,11 @@ function aggregate(rows, todayIso, opts) {
       }
       return;
     }
-    solde = r[11];
+    // après la date de l'export, le solde du CSV n'a pas bougé : on présume l'opération exécutée
+    if (date > cut) { solde = (solde == null ? r[11] : solde) + amt; presumed++; } else solde = r[11];
     lastRealDate = date;
-    lastBal[mk] = r[11];
-    dailyBal[date] = r[11];
+    lastBal[mk] = solde;
+    dailyBal[date] = solde;
     if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) { internalCount++; return; }
     if (salaryRe.test(r[2]) && amt > 0) {
       salaryByMonth[mk] = (salaryByMonth[mk] || 0) + amt;
@@ -379,11 +390,12 @@ function aggregate(rows, todayIso, opts) {
       return {
         n: c, spent: round2_(subSpend[par][c][cur] || 0),
         hist: histKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); }),
-        all: allKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); })
+        all: allKeys.map(function (k) { return round2_(subSpend[par][c][k] || 0); }),
+        upc: round2_((upcS[par] && upcS[par][c]) || 0)
       };
     }).filter(function (x) { return x.spent || x.hist.some(function (v) { return v; }); })
       .sort(function (a, b) { return b.spent - a.spent; });
-    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), subs: subs, ops: [] });
+    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), upc: round2_(upcP[par] || 0), subs: subs, ops: [] });
   });
   cats.sort(function (a, b) { return b.spent - a.spent; });
   var catIdx = {};
@@ -403,6 +415,7 @@ function aggregate(rows, todayIso, opts) {
       label: MOIS_LONGS_[m - 1].charAt(0).toUpperCase() + MOIS_LONGS_[m - 1].slice(1) + ' ' + y,
       monthName: MOIS_LONGS_[m - 1] },
     solde: round2_(solde),
+    soldeEstime: presumed > 0,
     proj: {
       value: projValue, futurs: round2_(futurs), futursList: futursList.slice(-10),
       salary: { expected: salaryExpected, day: salaryDay }, courantes: courantes, landing: landing,
