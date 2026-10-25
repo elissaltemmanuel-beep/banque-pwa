@@ -125,7 +125,11 @@ function mergeIncremental(existing, incoming, todayIso, overlapDays) {
 // ------------------------------------------------- règles de catégorisation
 
 var DEFAULT_RULES_ = [
-  { re: /\b(DGFIP|FINANCES PUBLIQUES|TRESOR PUBLIC|IMPOTS?)\b/, poste: 'Impôts & Taxes' }
+  { re: /\b(DGFIP|FINANCES PUBLIQUES|TRESOR PUBLIC|IMPOTS?)\b/, poste: 'Impôts & Taxes' },
+  { re: /\b(BOULANGERIE|PATISSERIE|BOUCHERIE|FROMAGERIE|SUPERETTE|SUPERMARCHE|EPICERIE|MARCHE)\b/, poste: 'Vie quotidienne', sous: 'Alimentation' },
+  { re: /\b(RESTO|RESTAURANT|BRASSERIE|BISTRO|PIZZERIA|PIZZA|SUSHI|CAFE|COFFEE|BAR|PUB|TRATTORIA)\b/, poste: 'Loisirs et sorties', sous: 'Restaurants et bars' },
+  { re: /\b(CLUB|BOOTCAMP|BOOT CAMP|FITNESS|CINEMA|THEATRE|CONCERT|FESTIVAL|BILLETTERIE|MUSEE)\b/, poste: 'Loisirs et sorties', sous: 'Sorties et culture' },
+  { re: /\b(PHARMACIE|PHARM|DOCTOLIB|DENTISTE|OPTIQUE|LABORATOIRE|LABO)\b/, poste: 'Santé' }
 ];
 
 /** Majuscules, sans accents ni ponctuation : sert à comparer un libellé à un motif. */
@@ -154,7 +158,7 @@ function applyRules_(rows, rules) {
     if (r[6] === 'Virements émis') { c = r.slice(); c[6] = 'Virements'; c[5] = r[5] === 'Virements émis' ? 'Virements' : r[5]; return c; }
     if (!r[6] || /non\s*cat/i.test(r[6])) {
       for (i = 0; i < DEFAULT_RULES_.length; i++) {
-        if (DEFAULT_RULES_[i].re.test(hay.trim())) { c = r.slice(); c[6] = DEFAULT_RULES_[i].poste; c[5] = r[5] && !/non\s*cat/i.test(r[5]) ? r[5] : c[6]; return c; }
+        if (DEFAULT_RULES_[i].re.test(hay.trim())) { c = r.slice(); c[6] = DEFAULT_RULES_[i].poste; c[5] = DEFAULT_RULES_[i].sous || (r[5] && !/non\s*cat/i.test(r[5]) ? r[5] : c[6]); return c; }
       }
     }
     return r;

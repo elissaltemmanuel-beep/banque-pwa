@@ -125,6 +125,22 @@
       return v.filter(function (r) { return r[0] && r[1]; }).map(function (r) { return { motif: String(r[0]), poste: String(r[1]), sous: String(r[2] || ''), montant: r[3] === '' || r[3] == null ? '' : Number(r[3]) || '' }; });
     });
   }
+  /** Règles écrites dans le fichier « Banque-regles.txt » du Drive (une par ligne : texte ; poste ; sous-poste ; montant). */
+  function readRulesFile() {
+    return driveList("name='Banque-regles.txt' and trashed=false").then(function (f) {
+      if (!f.length) return [];
+      return call(DRIVE + '/files/' + f[0].id + '?alt=media').then(function (r) { return r.text(); }).then(function (txt) {
+        var out = [];
+        txt.replace(/^\uFEFF/, '').split(/\r?\n/).forEach(function (line) {
+          line = line.trim(); if (!line || line[0] === '#') return;
+          var p = line.split(/\s*[;|\t]\s*/);
+          if (p.length < 2 || !p[0] || !p[1]) return;
+          out.push({ motif: p[0], poste: p[1], sous: p[2] || '', montant: p[3] ? Number(String(p[3]).replace(',', '.').replace(/[^0-9.]/g, '')) || '' : '', fichier: true });
+        });
+        return out;
+      });
+    }).catch(function (e) { if (e.status === 401) throw e; return []; });
+  }
   function readOps(id) {
     return readRange(id, 'Operations!A2:N').then(function (v) {
       return v.map(function (r) {
@@ -187,9 +203,10 @@
       .then(function (r) { return r ? (sync = r.info, r.rows) : readOps(id); })
       .then(function (rows) {
         if (!rows.length) throw new Error(sync && sync.error ? sync.error : 'Aucune opération pour le moment. Déposez un export CSV dans le dossier d\'export.');
-        return readRules(id).then(function (rules) {
-          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules, exportDate: sync && sync.fileDate });
-          data.sync = sync; data.rules = rules;
+        return Promise.all([readRules(id), readRulesFile()]).then(function (rr) {
+          var rules = rr[0], fileRules = rr[1];
+          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(fileRules), exportDate: sync && sync.fileDate });
+          data.sync = sync; data.rules = rules; data.fileRules = fileRules;
           return readBudgets(id).then(function (b) { data.budgets = b; return data; });
         });
       });
