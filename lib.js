@@ -121,6 +121,43 @@ function mergeIncremental(existing, incoming, todayIso, overlapDays) {
   };
 }
 
+
+// ------------------------------------------------- règles de catégorisation
+
+var DEFAULT_RULES_ = [
+  { re: /\b(DGFIP|FINANCES PUBLIQUES|TRESOR PUBLIC|IMPOTS?)\b/, poste: 'Impôts & Taxes' }
+];
+
+/** Majuscules, sans accents ni ponctuation : sert à comparer un libellé à un motif. */
+function norm_(s) {
+  return String(s == null ? '' : s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]+/g, ' ').trim();
+}
+
+/**
+ * Applique les règles (motif contenu dans le libellé → poste). Les règles de l'utilisateur
+ * priment sur la banque ; les règles intégrées ne touchent que les opérations « Non catégorisé ».
+ */
+function applyRules_(rows, rules) {
+  var user = (rules || []).map(function (r) {
+    return { m: norm_(r.motif), poste: String(r.poste || '').trim(), sous: String(r.sous || '').trim() };
+  }).filter(function (r) { return r.m && r.poste; });
+  return rows.map(function (r) {
+    var hay = ' ' + norm_(r[2] + ' ' + r[4]) + ' ', i, c;
+    for (i = 0; i < user.length; i++) {
+      if (hay.indexOf(user[i].m) > -1) {
+        c = r.slice(); c[6] = user[i].poste; c[5] = user[i].sous || user[i].poste; return c;
+      }
+    }
+    if (!r[6] || /non\s*cat/i.test(r[6])) {
+      for (i = 0; i < DEFAULT_RULES_.length; i++) {
+        if (DEFAULT_RULES_[i].re.test(hay.trim())) { c = r.slice(); c[6] = DEFAULT_RULES_[i].poste; c[5] = r[5] && !/non\s*cat/i.test(r[5]) ? r[5] : c[6]; return c; }
+      }
+    }
+    return r;
+  });
+}
+
 // ----------------------------------------------------------------- agrégats
 
 /**
@@ -129,6 +166,7 @@ function mergeIncremental(existing, incoming, todayIso, overlapDays) {
  */
 function aggregate(rows, todayIso, opts) {
   opts = opts || {};
+  rows = applyRules_(rows, opts.rules);
   var salaryRe = new RegExp(opts.salaryPattern || '(?!)', 'i');
   var cur = todayIso.slice(0, 7), y = +todayIso.slice(0, 4), m = +todayIso.slice(5, 7);
   var day = +todayIso.slice(8, 10), dim = daysInMonth_(y, m), remaining = dim - day, i, d;
@@ -264,7 +302,9 @@ function aggregate(rows, todayIso, opts) {
       date: landIso, payDate: payIso, payKnown: payKnown, payLate: payLate, days: landDays,
       payMin: payDays.length ? Math.min.apply(null, payDays) : null,
       payMax: payDays.length ? Math.max.apply(null, payDays) : null,
-      value: round2_(solde + landFut - (card90 / 90) * landDays)
+      value: round2_(solde + landFut - (card90 / 90) * landDays),
+      futSum: round2_(landFut), perDay: round2_(card90 / 90), spend: round2_((card90 / 90) * landDays),
+      fut: futursList.filter(function (f) { return f[0] <= landIso; }).slice(-14)
     };
   }
   var pts = [[day, round2_(solde)]];

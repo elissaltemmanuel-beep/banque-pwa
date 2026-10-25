@@ -120,6 +120,11 @@
       return m;
     });
   }
+  function readRules(id) {
+    return readRange(id, 'Regles!A2:C500').then(function (v) {
+      return v.filter(function (r) { return r[0] && r[1]; }).map(function (r) { return { motif: String(r[0]), poste: String(r[1]), sous: String(r[2] || '') }; });
+    });
+  }
   function readOps(id) {
     return readRange(id, 'Operations!A2:N').then(function (v) {
       return v.map(function (r) {
@@ -182,8 +187,11 @@
       .then(function (r) { return r ? (sync = r.info, r.rows) : readOps(id); })
       .then(function (rows) {
         if (!rows.length) throw new Error(sync && sync.error ? sync.error : 'Aucune opération pour le moment. Déposez un export CSV dans le dossier d\'export.');
-        var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN });
-        data.sync = sync; return readBudgets(id).then(function (b) { data.budgets = b; return data; });
+        return readRules(id).then(function (rules) {
+          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules });
+          data.sync = sync; data.rules = rules;
+          return readBudgets(id).then(function (b) { data.budgets = b; return data; });
+        });
       });
   }
 
@@ -203,6 +211,14 @@
       });
     },
     forceSync: function () { return compute(true).then(function (d) { cacheData(d); return d; }); },
+    saveRules: function (list) {
+      var id, clean = (list || []).filter(function (r) { return r && r.motif && r.poste; }).slice(0, 300).map(function (r) {
+        return { motif: String(r.motif).slice(0, 120), poste: String(r.poste).slice(0, 120), sous: String(r.sous || '').slice(0, 120) };
+      });
+      return findSheet().then(function (sid) { id = sid; return ensureSheet(id, 'Regles', ['motif', 'poste', 'sous_poste']); })
+        .then(function () { return writeRange(id, 'Regles', 3, clean.map(function (r) { return [r.motif, r.poste, r.sous]; })); })
+        .then(function () { return clean; });
+    },
     saveBudget: function (poste, montant) {
       montant = Number(montant);
       if (!poste || !isFinite(montant)) return Promise.reject(new Error('Plafond invalide.'));
