@@ -35,7 +35,7 @@
   function exportInfo(){ var fd=D.sync&&D.sync.fileDate, stale=fd&&daysBetween(fd,D.today.iso)>7;
     return {label: fd? 'Export du '+fmtDate(fd) : 'Données au '+fmtDate(D.stats.lastRealDate), stale: !!stale}; }
   function header(){ var n=fcount(), ex=D?exportInfo():{label:'Chargement…',stale:false};
-    return '<div class="row"><span class="chip"><span class="dot'+(ex.stale?' stale':'')+'"></span>'+esc(ex.label)+(ex.stale?' · ancien':'')+'</span><div style="display:flex;gap:8px"><button class="iconbtn" data-act="fopen" aria-label="Filtres'+(n?', '+n+' actif'+(n>1?'s':''):'')+'" style="position:relative">'+ico(I.filter)+(n?'<span class="fbadge">'+n+'</span>':'')+'</button><button class="iconbtn" data-act="hide" aria-label="'+(S.hide?'Afficher':'Masquer')+' les montants" aria-pressed="'+S.hide+'">'+ico(S.hide?I.eyeoff:I.eye)+'</button></div></div>'; }
+    return '<div class="row">'+(S.stale&&D?'<button class="chip" data-act="refresh" style="cursor:pointer"><span class="dot stale"></span>Actualiser · chiffres du '+esc(fmtDate(D.stats.lastRealDate))+'</button>':'<span class="chip"><span class="dot'+(ex.stale?' stale':'')+'"></span>'+esc(ex.label)+(ex.stale?' · ancien':'')+'</span>')+'<div style="display:flex;gap:8px"><button class="iconbtn" data-act="fopen" aria-label="Filtres'+(n?', '+n+' actif'+(n>1?'s':''):'')+'" style="position:relative">'+ico(I.filter)+(n?'<span class="fbadge">'+n+'</span>':'')+'</button><button class="iconbtn" data-act="hide" aria-label="'+(S.hide?'Afficher':'Masquer')+' les montants" aria-pressed="'+S.hide+'">'+ico(S.hide?I.eyeoff:I.eye)+'</button></div></div>'; }
 
   /* ---------- postes ---------- */
   function aria(c,extra){ return Math.round(c.spent/c.avg*100)+' % de la moyenne dépensés, '+Math.round(ELAPSED*100)+' % du mois écoulé. '+extra; }
@@ -273,6 +273,7 @@
     else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
     else if(el.dataset.act==='retry'){boot()}
     else if(el.dataset.act==='unlock'){doUnlock()}
+    else if(el.dataset.act==='refresh'){refresh(true)}
     else if(el.dataset.act==='signin'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='lock'){ if(Lock.enabled()){Lock.disable();render()} else Lock.enable().then(render).catch(function(err){S.error=errMsg(err);render()}) }
     else if(el.dataset.act==='signout'){API.signOut();Lock.disable();D=null;S.stage='signin';S.error=null;render();window.scrollTo(0,0)}
@@ -284,16 +285,21 @@
   function errMsg(e){ return (e&&e.message)?e.message:String(e); }
   function run(fn,args){ return API[fn].apply(null,args||[]); }
   function load(keep){ if(!keep){ S.loading=true; S.error=null; render(); }
-    return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; render(); }).catch(function(err){ S.loading=false; if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
+    return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; S.stale=false; render(); }).catch(function(err){ S.loading=false; if(D){ S.stale=true; } else if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
+  function withTimeout(p,ms){ return new Promise(function(res,rej){ var t=setTimeout(function(){rej(new Error('délai dépassé'))},ms); p.then(function(v){clearTimeout(t);res(v)},function(e){clearTimeout(t);rej(e)}); }); }
+  function refresh(interactive){ return withTimeout(API.signIn(interactive),interactive?120000:8000).then(function(){ return load(true); }).catch(function(){ S.stale=true; render(); }); }
+  function openApp(){ var c=API.cached();
+    if(c){ setData(c); S.stage='ready'; S.loading=false; S.error=null; S.stale=true; render(); return refresh(false); }
+    return enter(); }
   function enter(){ S.stage='ready'; S.loading=true; render();
     return API.signIn(false).then(function(){ return load(true); }).catch(function(){ S.loading=false; S.stage='signin'; render(); }); }
   function doUnlock(){ if(S.lockBusy) return; S.lockBusy=true;
-    Lock.unlock().then(function(){ S.lockBusy=false; S.lockOk=true; enter(); }).catch(function(){ S.lockBusy=false; S.stage='lock'; render(); }); }
+    Lock.unlock().then(function(){ S.lockBusy=false; S.lockOk=true; openApp(); }).catch(function(){ S.lockBusy=false; S.stage='lock'; render(); }); }
   function boot(){
     S.error=null; S.lockOk=false;
     Lock.supported().then(function(ok){ S.lockAvail=ok; });
     if(Lock.enabled()){ S.stage='lock'; render(); doUnlock(); }
-    else if(API.wasSigned()){ enter(); }
+    else if(API.wasSigned()){ openApp(); }
     else { S.stage='signin'; S.loading=false; render(); }
   }
   /* reverrouillage après 60 s en arrière-plan */

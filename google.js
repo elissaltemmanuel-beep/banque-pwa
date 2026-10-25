@@ -192,6 +192,7 @@
   window.API = {
     signIn: signIn, signOut: signOut,
     wasSigned: function () { return load('banque-signed') === '1'; },
+    cached: function () { try { var c = load('banque-cache'); return c ? JSON.parse(c) : null; } catch (e) { return null; } },
     getDashboard: function () {
       return compute(false).then(function (d) { cacheData(d); return d; }).catch(function (e) {
         var c = load('banque-cache');
