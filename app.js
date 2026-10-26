@@ -35,19 +35,30 @@
   function buildCats(){ var k=+S.f.moy, P_=per(), first=P_.idxs.length?P_.idxs[0]:0;
     ELAPSED=P_.cur? DAY/DAYS : 1;
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
+    /* poste fixe : même montant chaque mois (écart <= 8 %) sur les mois précédents -> comparé à ce montant, pas à un rythme */
+    function isFixed(all){ if(!all||P_.isYear||!P_.idxs.length) return false;
+      var prior=all.slice(Math.max(0,first-k),first); if(prior.length<3) return false;
+      var mn=Math.min.apply(null,prior), mx=Math.max.apply(null,prior), mean=sum(prior)/prior.length;
+      return mn>0&&mean>0&&(mx-mn)/mean<=0.08; }
     function calc(all,hist,spentNow,exc){
       if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc!=='incl'?c.exc:null);
-      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm}; })}; }); }
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,fixed:isFixed(c.all),
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:isFixed(s.all)}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
-  function status(c){ var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
+  function expd(c){ return c.fixed? c.avg : c.avg*ELAPSED; }
+  function status(c){
+    if(c.fixed){ var df=c.spent-c.avg;
+      if(Math.abs(df)<=Math.max(5,c.avg*0.02)) return {k:'ok',t:'Fixe, à jour'};
+      if(df<0) return {k:'ok',t:'Pas encore prélevé'};
+      return df>Math.max(MIN_EUR,c.avg*0.15)?{k:'bad',t:'Au-dessus du montant fixe'}:{k:'warn',t:'À surveiller'}; }
+    var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
     if(over<MIN_EUR) return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'};
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
-  function srt(arr,ec){ var s=arr.slice().sort(ec?function(a,b){return (b.spent/b.avg-ELAPSED)-(a.spent/a.avg-ELAPSED)}:function(a,b){return b.spent-a.spent}); return s; }
+  function srt(arr,ec){ var s=arr.slice().sort(ec?function(a,b){return (b.spent-expd(b))/b.avg-(a.spent-expd(a))/a.avg}:function(a,b){return b.spent-a.spent}); return s; }
   function applyF(list){ return list; }
   function fcount(){ var f=S.f,n=0; if(f.graph!=='solde')n++; if(f.year&&D&&f.year!==D.today.month.slice(0,4)||f.month&&D&&f.month!==D.today.month.slice(5,7))n++; if(f.poste)n++; if(f.sous)n++; if(f.moy!=='12')n++; if(f.exc==='incl')n++; return n; }
 
@@ -74,7 +85,7 @@
 
   /* ---------- postes ---------- */
   function aria(c,extra){ return Math.round(c.spent/c.avg*100)+' % de la moyenne dépensés, '+Math.round(ELAPSED*100)+' % du mois écoulé. '+extra; }
-  function bar2(c){ var s=status(c), e=c.avg*ELAPSED, d=c.spent-e, w=Math.min(Math.abs(d)/(c.avg*0.5),1)*50, pos=d>=0;
+  function bar2(c){ var s=status(c), e=expd(c), d=c.spent-e, w=Math.min(Math.abs(d)/(c.avg*0.5),1)*50, pos=d>=0;
     return '<div class="bar" role="img" aria-label="'+aria(c,'Écart au rythme attendu : '+Math.round(d)+' euros')+'"><i class="'+s.k+'" style="'+(pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i><b style="left:50%"></b></div><div class="gapl muted"><span class="'+s.k+'t">'+(pos?'+':'−')+eur(Math.abs(d))+'</span> par rapport au rythme attendu ('+eur(e)+')</div>'; }
   function compactCard(list,sub){
     var ecarts=S.view==='ecarts', T=sub?'div':'button';
@@ -83,19 +94,19 @@
     else { var pool=applyF(list), keep=pool;
       if(!S.all&&pool.length>8){ keep=pool.slice().sort(function(a,b){return Math.max(b.spent,b.avg)-Math.max(a.spent,a.avg)}).slice(0,8); extra=pool.length-keep.length; }
       cats=srt(keep,ecarts); }
-    function info(c){ var s=status(c), pct=c.spent/c.avg*100, gap=(c.spent/c.avg-ELAPSED)*100, d=c.spent-c.avg*ELAPSED; return {c:c,s:s,k:s.k,pct:pct,gap:gap,d:d,pos:gap>=0}; }
-    function lab(x){ return esc(x.c.n)+' : '+(ecarts?((x.pos?'+':'−')+Math.round(Math.abs(x.d))+' euros par rapport au rythme attendu'):(Math.round(x.c.spent)+' euros, '+Math.round(x.pct)+' % de la moyenne de '+Math.round(x.c.avg)+' euros'))+', '+x.s.t; }
+    function info(c){ var s=status(c), e=expd(c), pct=c.spent/c.avg*100, gap=(c.spent-e)/c.avg*100, d=c.spent-e; return {c:c,s:s,k:s.k,pct:pct,gap:gap,d:d,e:e,pos:gap>=0}; }
+    function lab(x){ return esc(x.c.n)+' : '+(ecarts?((x.pos?'+':'−')+Math.round(Math.abs(x.d))+(x.c.fixed?' euros par rapport au montant fixe':' euros par rapport au rythme attendu')):(Math.round(x.c.spent)+' euros, '+Math.round(x.pct)+' % de la moyenne de '+Math.round(x.c.avg)+' euros'))+', '+x.s.t; }
     function upn(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="display:block;font-size:10.5px;font-weight:500;line-height:1.2">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
     var items=cats.map(info), body;
     var tot=sum(list.map(function(c){return c.spent>0?c.spent:0})), mx=Math.max.apply(null,items.map(function(x){return x.c.spent}).concat([1]));
-    function small(x){ return ecarts? 'attendu '+eur(x.c.avg*ELAPSED) : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
-    function amt(x){ return ecarts? '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>' : '<b>'+eur(x.c.spent)+'</b>'; }
+    function small(x){ return ecarts? (x.c.fixed?'fixe ':'attendu ')+eur(x.e) : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
+    function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>') : '<b>'+eur(x.c.spent)+'</b>'; }
     function vis(x){
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
       return '<span class="pvis dep"><i data-w="'+(Math.max(x.c.spent,0)/mx*100).toFixed(1)+'"></i></span>'; }
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
     else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+upn(x)+'</span><span class="psm">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
-    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Triés du plus dépensé au moins dépensé. Le pourcentage est la part du poste dans le total des dépenses.';
+    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Un poste au même montant chaque mois est comparé à ce montant. Les 8 postes les plus importants sont affichés.' : 'Triés du plus dépensé au moins dépensé. Le pourcentage est la part du poste dans le total des dépenses.';
     return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+
       (ecarts?'<p class="gapl muted" style="text-align:center;margin:2px 0 4px">À gauche : sous la moyenne · à droite : au-dessus</p>':'')+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
       '<div class="gapl muted" style="margin-top:4px">'+cap+'</div></div>'; }
