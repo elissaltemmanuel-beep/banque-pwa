@@ -361,3 +361,33 @@ input[type=search]{border:1px solid var(--track)!important}
 .fbtn{background:var(--accent)!important;border:0!important;box-shadow:none!important;color:var(--accent-ink)!important}
 .fbtn.ghost{background:var(--track)!important;color:var(--text)!important}
 .badge,.iconbtn{box-shadow:none!important}
+
+/* ===== Alignement exact sur la maquette « Banque Design Plat » ===== */
+:root:root{--font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+body{font-size:15px;line-height:1.4;font-variant-numeric:normal}
+.screen{gap:12px}
+h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:2px 4px 0}
+h2,h3{font-size:16px;font-weight:700;margin:0 4px}
+.card{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:16px;min-width:0}
+.card.list{gap:0;padding:4px 10px}
+.pad{padding-inline:4px}
+.note.pad,p.note{text-align:left;margin:0;padding-inline:4px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.tile{background:var(--glass);border-radius:16px;padding:11px 10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0;text-align:left}
+.ktile{border-radius:16px;padding:11px 10px}
+.tile .kv,.ktile .kv{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.opline,.switch{padding:11px 4px;border-bottom:1px solid var(--track);gap:10px}
+.opline:last-child,.switch:last-child{border-bottom:0}
+.opline .l span:first-child{font-weight:600;font-size:14px}
+.opline .l span+span{font-size:12px;color:var(--muted)}
+.badge{font-size:12px;font-weight:700;padding:2px 8px}
+.prow{padding:9px 4px}
+.psm,.psm.pct{font-size:13px;font-weight:700;color:var(--text)}
+.pamt{font-size:13px;font-weight:400}
+.pnm{font-size:15px;font-weight:600}
+.pvis,.pbar{height:7px}
+.pbar{display:block;border-radius:99px;background:var(--track);margin-top:6px;position:relative;overflow:hidden}
+.pbar i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:width .9s cubic-bezier(.16,1,.3,1)}
+
+.switch[data-sub]{font-weight:600;font-size:14px}
+.back{color:var(--accent)!important;font-weight:600;font-size:14px;padding:4px 4px;min-height:36px}
