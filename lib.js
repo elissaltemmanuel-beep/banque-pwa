@@ -584,7 +584,6 @@ function aggregate(rows, todayIso, opts) {
     revOps: revOps,
     vac: vacances_(rows, todayIso, opts.sejours),
     rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
-    kmonth: kmonth_(dailyBal, todayIso, cur, salaryFirstDay),
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,
@@ -706,22 +705,6 @@ function rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur) {
   return out;
 }
 
-
-// ----------------------------------------------------------------- carte KPI de l'accueil (mois en cours)
-
-/** Repères du mois dernier pour la carte de l'accueil : solde au même jour, et solde la veille de la paie. */
-function kmonth_(dailyBal, todayIso, cur, salaryFirstDay) {
-  var dates = Object.keys(dailyBal).sort();
-  function balAt(iso) {
-    if (!dates.length || iso < dates[0]) return null;
-    var lo = 0, hi = dates.length - 1;
-    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (dates[mid] <= iso) lo = mid; else hi = mid - 1; }
-    return round2_(dailyBal[dates[lo]]);
-  }
-  var pk = shiftMonth_(cur, -1), day = +todayIso.slice(8, 10), dim = daysInMonth_(+pk.slice(0, 4), +pk.slice(5, 7));
-  var sameIso = pk + '-' + pad2_(Math.min(day, dim)), pay = salaryFirstDay[pk];
-  return { prevSame: balAt(sameIso), prevSameDate: sameIso, prevLanding: pay && pay > 1 ? balAt(pk + '-' + pad2_(pay - 1)) : null, prevKey: pk };
-}
 
 if (typeof module !== 'undefined') {
   module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory, splitAccounts_: splitAccounts_, savingsSummary_: savingsSummary_,
