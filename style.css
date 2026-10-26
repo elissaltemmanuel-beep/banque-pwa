@@ -321,3 +321,7 @@ button.ktile{cursor:pointer}
 .ksec{display:flex;flex-direction:column;gap:9px}.kdep{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .kcmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kcmp>div{background:var(--glass2);border:1px solid var(--rim-soft);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;min-width:0}.kcmp span.muted{font-size:11.5px;white-space:nowrap}.kcmp b{font-variant-numeric:tabular-nums}
 @media (max-width:360px){.ktiles,.kcmp{grid-template-columns:1fr}}
+
+.kchart{display:flex;flex-direction:column;gap:6px}
+.kchart .ctrls{margin:0}
+.kchart p.muted{margin:2px 0 4px!important}
