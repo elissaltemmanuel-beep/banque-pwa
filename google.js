@@ -140,9 +140,9 @@
             if (fm > 0) fixes.push({ poste: p[1], sous: p[2] || '', montant: fm });
             return;
           }
-          if (p[0].toLowerCase() === '@livret') {   // Livret A déclaré : @livret ; solde ; date ; plafond ; taux en % ; intérêts en cours (les 3 derniers facultatifs)
+          if (p[0].toLowerCase() === '@livret') {   // Livret A déclaré : @livret ; solde ; date ; plafond ; taux en % ; intérêts en cours ; intérêts bruts crédités (les 4 derniers facultatifs)
             var num = function (v) { var x = Number(String(v || '').replace(/\s/g, '').replace(',', '.').replace(/[^0-9.\-]/g, '')); return isFinite(x) && String(v || '').trim() !== '' ? x : null; };
-            if (num(p[1]) != null && /^\d{4}-\d{2}-\d{2}$/.test(p[2] || '')) livret = { solde: num(p[1]), date: p[2], plafond: num(p[3]), taux: num(p[4]), interets: num(p[5]) };
+            if (num(p[1]) != null && /^\d{4}-\d{2}-\d{2}$/.test(p[2] || '')) livret = { solde: num(p[1]), date: p[2], plafond: num(p[3]), taux: num(p[4]), interets: num(p[5]), brut: num(p[6]) };
             return;
           }
           if (p[0].toLowerCase() === '@sejour') {   // dates forcées d'une période de vacances : @sejour ; Été 2026 ; 2026-07-04 ; 2026-09-01 (dernier jour inclus)

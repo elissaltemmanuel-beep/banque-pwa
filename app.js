@@ -196,21 +196,31 @@
     var L=D.proj&&D.proj.landing, open=!!S.landOpen&&!!L, cc=D.curve||{}, pk=prevKey(D.today.month,-1), pm=D.daily&&D.daily[pk], mp=MOIS_C[+pk.slice(5,7)-1];
     function balOn(day){ if(!pm||!pm.b||day<1) return null; for(var i=Math.min(day,pm.b.length)-1;i>=0;i--) if(pm.b[i]!=null) return pm.b[i]; return null; }
     var payDay=L&&L.payDate?+L.payDate.slice(8,10):(D.proj.salary&&D.proj.salary.day)||0, km={prevSame:balOn(DAY),prevLanding:payDay>1?balOn(payDay-1):null};
-    var head='<div class="row"><span class="muted" style="font-size:13.5px">'+(D.soldeEstime?'Solde estimé':'Solde BoursoBank')+'</span></div>';
     var d0=km.prevSame!=null?D.solde-km.prevSame:null, p0=km.prevSame?d0/Math.abs(km.prevSame)*100:null;
-    var left='<div class="ktile"><span class="muted" style="font-size:12.5px">Aujourd’hui</span><span class="kv" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</span>'+(d0!=null?kchip(d0,p0,true)+'<span class="note">face au '+DAY+' '+mp+'</span>':'')+'</div>';
-    var right;
+    var SA=D.seriesAll||[], sav=(SA.length?SA[SA.length-1].sav:0)||0;
+    /* solde (à gauche) avec le solde projeté dedans */
+    var proj='';
     if(L){ var dl=km.prevLanding!=null?L.value-km.prevLanding:null, pl=km.prevLanding?dl/Math.abs(km.prevLanding)*100:null;
-      right='<button class="ktile" data-act="landtoggle" aria-expanded="'+open+'"><span class="muted" style="font-size:12.5px">Au '+esc(fmtDate(L.date))+'</span><span class="kv" style="color:var(--warn)">'+eur(L.value)+'</span>'+(dl!=null?kchip(dl,pl,true)+'<span class="note">face à '+mp+'</span>':'<span class="note">veille de la paie</span>')+'</button>'; }
-    else right='<div class="ktile"><span class="muted" style="font-size:12.5px">Fin de mois</span><span class="kv" style="color:var(--warn)">'+eur(D.proj.value)+'</span><span class="note">paie non repérée</span></div>';
-    var sub=L&&L.exportAge>1?'Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.':(L&&L.days<=0?'Paie attendue d’un jour à l’autre.':(L?'Atterrissage : veille de la paie '+(L.payKnown?'programmée le '+fmtDate(L.payDate):'estimée au '+fmtDate(L.payDate))+'.':''));
-    sub=sub.replace(/\.\.+$/,'.'); 
+      proj='<span class="kproj">→ '+eur(L.value)+' au '+esc(fmtDate(L.date))+'</span>'+(pl!=null?'<span class="note">('+(pl>=0?'+':'−')+Math.abs(Math.round(pl))+' % face à '+mp+')</span>':''); }
+    else proj='<span class="note">Fin de mois : '+eur(D.proj.value)+'</span>';
+    var left='<'+(L?'button data-act="landtoggle" aria-expanded="'+open+'"':'div')+' class="ktile"><span class="muted" style="font-size:12.5px">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</span><span class="kv" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</span>'+(d0!=null?kchip(d0,p0,true):'')+proj+'</'+(L?'button':'div')+'>';
+    /* Livret A (à droite) : solde, intérêts touchés et non touchés */
+    var Lv=D.livret, E=D.epargne||{accounts:[]}, acc=E.accounts&&E.accounts[0], lv=Lv?{solde:Lv.est,brut:Lv.brut,enc:Lv.interets}:(acc?{solde:acc.solde,brut:acc.interetsYtd||null,enc:null}:null), right;
+    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">Livret A</span><span class="kv">'+eur(lv.solde)+'</span>'+(sav>0?kchip(sav,lv.solde>sav?sav/(lv.solde-sav)*100:null,true):'')+
+        (lv.brut!=null?'<span class="note">Touchés <b>+'+eur(lv.brut,true)+'</b></span>':'')+(lv.enc!=null?'<span class="note" style="margin-top:-2px">Non touchés <b>+'+eur(lv.enc,true)+'</b></span>':'')+'</div>'; }
+    else { var s12=sum(SA.slice(-12).map(function(x){return x.sav||0}));
+      right='<div class="ktile"><span class="muted" style="font-size:12.5px">Mis de côté</span><span class="kv">'+eur(s12)+'</span><span class="note">sur 12 mois</span></div>'; }
+    /* total liquide : compte courant + Livret A + intérêts non touchés */
+    var strip='';
+    if(lv){ var tot=D.solde+lv.solde+(lv.enc||0), ref=km.prevSame!=null?km.prevSame+(lv.solde-sav):null;
+      strip='<div class="kstrip"><span class="kl"><span class="muted">Total liquide</span><b>'+eur(tot,true)+'</b></span>'+(ref!=null?kchip(tot-ref,ref?(tot-ref)/Math.abs(ref)*100:null,true):'')+'</div>'; }
+    var sub=L&&L.exportAge>1?'Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.':'';
     var dep='', nowD=(cc.depCum||[])[DAY-1], hab=(cc.habit||[])[DAY-1], prevD=pm&&pm.d?pm.d.slice(0,DAY).reduce(function(a,x){return a+x},0):null;
     if(nowD>0){ var dp=prevD!=null?nowD-prevD:null, da=hab>0?nowD-hab:null;
       dep='<div class="ksep"></div><div class="ksec"><span class="muted" style="font-size:13px">Dépenses de '+esc(MOIS_L[+D.today.month.slice(5,7)-1])+', au '+DAY+'</span><span class="kdep">'+eur(nowD)+'</span>'+
         '<div class="kcmp">'+(dp!=null?'<div><span class="muted">Mois dernier</span><b>'+eur(prevD)+'</b>'+kchip(dp,prevD>0?dp/prevD*100:null,false)+'</div>':'')+(da!=null?'<div><span class="muted">Moyenne</span><b>'+eur(hab)+'</b>'+kchip(da,da/hab*100,false)+'</div>':'')+'</div>'+
         '<div class="note">Exceptionnelles comprises, mouvements entre comptes exclus. La moyenne est celle des 12 derniers mois, au même jour du mois.</div></div>'; }
-    return '<div class="card kcard">'+head+'<div class="ktiles">'+left+right+'</div>'+(open?landDetail(L):'')+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'<div class="ksep"></div>'+chartInner()+dep+'</div>'; }
+    return '<div class="kwrap"><div class="ktiles">'+left+right+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+strip+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'<div class="ksep"></div>'+chartInner()+dep+'</div>'; }
   function homeScreen(){
     return header()+syncNote()+kpiCard()+
     (revMode()?revSection():

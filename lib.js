@@ -720,7 +720,7 @@ function livret_(rows, todayIso, L) {
     sent -= r[7]; n++;
   });
   var est = round2_(L.solde + sent);
-  return { solde: round2_(L.solde), date: L.date, plafond: L.plafond || null, taux: L.taux || null, interets: L.interets || null, since: round2_(sent), nSince: n, est: est,
+  return { solde: round2_(L.solde), date: L.date, plafond: L.plafond || null, taux: L.taux || null, interets: L.interets || null, brut: L.brut || null, since: round2_(sent), nSince: n, est: est,
     usage: L.plafond ? round2_(est / L.plafond * 100) : null, reste: L.plafond ? round2_(Math.max(0, L.plafond - est)) : null };
 }
 

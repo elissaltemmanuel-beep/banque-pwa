@@ -307,9 +307,6 @@ div.prow{cursor:default}
 .rpt-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;grid-column:1/-1}.rpt-t{font-size:13px;color:var(--muted);line-height:1.4;min-width:0;overflow-wrap:anywhere}.rpt-a{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* carte KPI de l'accueil */
-.kcard{display:flex;flex-direction:column;gap:12px;text-align:left}
-.kcard .note{text-align:left;margin:0;font-size:12px;line-height:1.45}
-.kcard .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .ktiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ktile{background:var(--glass2);border:1px solid var(--rim-soft);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0;text-align:left;color:inherit;font:inherit}
 button.ktile{cursor:pointer}
@@ -328,6 +325,15 @@ button.ktile{cursor:pointer}
 
 .psm.pct{font-size:13px;font-weight:700;color:var(--text)}
 /* pastilles de variation : elles passent à la ligne au lieu de déborder de leur case */
-.kcard .kchip{max-width:100%;flex-wrap:wrap;white-space:normal;font-size:12px;padding:2px 8px;row-gap:0}
-.kcard .kchip b{font-weight:800}.kcard .kchip small{font-size:11px;font-weight:500;opacity:.9;margin-left:2px}
-.kcard .kchip{flex-wrap:nowrap;white-space:nowrap;gap:3px;padding:2px 7px;font-size:12px}.kcard .kchip small{font-size:10.5px;margin-left:1px}
+
+/* carte KPI sans cadre : les tuiles prennent toute la largeur */
+.kwrap{display:flex;flex-direction:column;gap:12px;text-align:left;min-width:0}
+.kwrap .note{text-align:left;margin:0;font-size:12px;line-height:1.45}
+.kwrap .ktile .note b{color:var(--text)}
+.kproj{font-size:12.5px;font-weight:700;color:var(--warn)}
+.kstrip{background:var(--glass2);border:1px solid var(--rim-soft);border-radius:14px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.kstrip .kl{display:flex;align-items:baseline;gap:8px;min-width:0}.kstrip .kl .muted{font-size:12px;white-space:nowrap}.kstrip .kl b{font-size:17px;font-variant-numeric:tabular-nums}
+.kdetail{background:var(--glass2);border:1px solid var(--rim-soft);border-radius:14px}
+.kwrap .kchip{flex-wrap:nowrap;white-space:nowrap;gap:3px;padding:2px 7px;font-size:12px}.kwrap .kchip b{font-weight:800}.kwrap .kchip small{font-size:10.5px;font-weight:500;opacity:.9;margin-left:1px}
+.kwrap .kcmp>div{background:var(--glass2)}
+
