@@ -256,7 +256,7 @@ function aggregate(rows, todayIso, opts) {
   var spend = {}, spendTD = {}, subSpendTD = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
   var depDay = {}, revDay = {};
   var yr = {}, ytdCut = todayIso.slice(5);
-  var upcP = {}, upcS = {}, sav = {}, revExc = {}, excM = {};
+  var upcP = {}, upcS = {}, sav = {}, revExc = {}, excM = {}, revOps = {};
   var futurs = 0, futursList = [], salaryByMonth = {}, salaryFirstDay = {}, salaryThisMonth = false, futureSalary = null;
   var card90 = 0, win90 = addDays_(todayIso, -90);
   var solde = null, lastRealDate = null, internalCount = 0, presumed = 0;
@@ -296,7 +296,7 @@ function aggregate(rows, todayIso, opts) {
     }
     var dd = +date.slice(8, 10), depV = 0, revV = 0;
     if (INCOME_PARENTS.indexOf(par) > -1) {
-      if (amt > 0) { revV = amt; if ((amt >= 1500 && !salaryRe.test(r[2])) || par === 'Revenus exceptionnels') revExc[mk] = (revExc[mk] || 0) + amt; } else depV = -amt;
+      if (amt > 0) { revV = amt; (revOps[mk] || (revOps[mk] = [])).push([date, r[4] || r[2], cat, round2_(amt), par]); if ((amt >= 1500 && !salaryRe.test(r[2])) || par === 'Revenus exceptionnels') revExc[mk] = (revExc[mk] || 0) + amt; } else depV = -amt;
     } else {
       depV = -amt;
       bump(spend, par, mk, -amt);
@@ -581,6 +581,7 @@ function aggregate(rows, todayIso, opts) {
     kpi: kpi, forecast: forecast, excOps: excOps.slice(0, 8), dups: dups, merchants: merchants,
     bilan: bilan_(yr, y),
     ops: opsAll,
+    revOps: revOps,
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,

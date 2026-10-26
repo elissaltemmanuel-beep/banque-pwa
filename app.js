@@ -225,9 +225,23 @@
       '<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Les dépenses courantes sont la moyenne de vos paiements par carte sur 90 jours. Si l\'export est ancien, les opérations faites depuis ne sont pas comptées.</p></div>'; }
   function homeScreen(){
     return header()+syncNote()+'<div><div class="muted" style="font-size:14px">'+(D.soldeEstime?'Solde estimé (export du '+esc(fmtDate(D.proj.landing?D.proj.landing.exportDate:D.stats.lastRealDate))+')':'Solde BoursoBank')+'</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
-    landingCard()+chartCard()+
-    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList();
+    landingCard()+chartCard()+(revMode()?revSection():
+    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
   }
+  /* ---------- sources de revenus (graphique sur « Revenus ») ---------- */
+  function revMode(){ return S.f.graph==='rev'&&!S.f.poste; }
+  function revGroups(){ var P_=per(), ops=[]; P_.idxs.forEach(function(i){ ops=ops.concat((D.revOps&&D.revOps[D.keys[i]])||[]); });
+    var g={}, tot=0; ops.forEach(function(o){ var k=o[2]||o[4]||'Autres revenus'; var x=g[k]||(g[k]={n:k,par:o[4],sum:0,ops:[]}); x.sum+=o[3]; x.ops.push(o); tot+=o[3]; });
+    var list=Object.keys(g).map(function(k){ g[k].ops.sort(function(a,b){return a[0]<b[0]?1:-1}); return g[k]; }).sort(function(a,b){return b.sum-a.sum});
+    return {list:list,tot:tot,n:ops.length}; }
+  function revSection(){ var P_=per(), R=revGroups(), mx=Math.max.apply(null,R.list.map(function(x){return x.sum}).concat([1])), sel=R.list.filter(function(x){return x.n===S.revSel})[0];
+    var body=R.list.length? R.list.map(function(x){ return '<button class="prow" data-rsel="'+esc(x.n)+'" aria-pressed="'+(sel===x)+'" aria-label="'+esc(x.n)+' : '+Math.round(x.sum)+' euros"><span class="ptop"><span class="pnm">'+esc(x.n)+'</span><span class="psm">'+Math.round(x.sum/R.tot*100)+' %</span><span class="pamt"><b>'+eur(x.sum)+'</b></span></span><span class="pvis dep"><i data-w="'+(x.sum/mx*100).toFixed(1)+'"></i></span></button>'; }).join('')
+      : '<p class="muted" style="padding:16px 4px">Aucun revenu sur cette période.</p>';
+    var ops=sel?sel.ops:[];
+    return '<div class="row"><h2 style="font-size:18px">Sources de revenus</h2><span class="muted" style="font-size:12px">'+esc(P_.label)+'</span></div>'+
+      '<p class="muted" style="font-size:13px;margin:-6px 0 0">Revenus reçus : <b style="color:var(--text)">'+eur(R.tot)+'</b>'+(P_.isYear?' sur l\'année':' sur le mois')+', '+R.n+' opération'+(R.n>1?'s':'')+'.</p>'+
+      '<div class="card syn">'+body+'<div class="gapl muted" style="margin-top:4px">Regroupées par catégorie. Le pourcentage est la part dans les revenus de la période. Les mouvements entre vos comptes sont exclus. Touchez une source pour voir ses opérations.</div></div>'+
+      (sel?'<div class="row"><h3 style="font-size:16px">Opérations · '+esc(sel.n)+'</h3></div><div class="card" style="padding:4px 14px">'+opsList(ops.slice(0,40).map(function(o){return [o[0],o[1],sel.n,o[3],0]}))+'</div>':''); }
   function avgLine(){ var t=CATS.reduce(function(s,c){return s+(c.avgm||0)},0); return '<p class="muted" style="font-size:13px;margin:-6px 0 0">Dépenses moyennes : <b style="color:var(--text)">'+eur(t)+'</b> par mois, sur '+S.f.moy+' mois.</p>'; }
   function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):'Postes'; }
   function postesList(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null;
@@ -626,7 +640,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep],[data-rsel]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -662,6 +676,7 @@
       authed('saveBudget',[el.dataset.p,v]).then(function(b){ D.budgets=b; S.budBusy=false; S.bud=null; render(); }).catch(function(err){ S.budBusy=false; S.error=errMsg(err); render(); }); }
     else if(el.dataset.gr){S.f.graph=el.dataset.gr;render()}
     else if(el.dataset.ep!==undefined){S.epOpen=(S.epOpen===+el.dataset.ep)?null:+el.dataset.ep;render()}
+    else if(el.dataset.rsel!==undefined){S.revSel=(S.revSel===el.dataset.rsel)?null:el.dataset.rsel;render()}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;render()}
     else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}
