@@ -37,26 +37,26 @@
   function buildCats(){ var k=+S.f.moy, P_=per(), first=P_.idxs.length?P_.idxs[0]:0;
     ELAPSED=P_.cur? DAY/DAYS : 1;
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
-    /* poste fixe : même montant chaque mois (écart <= 8 %) sur les mois précédents -> comparé à ce montant, pas à un rythme */
-    function isFixed(all){ if(!all||P_.isYear||!P_.idxs.length) return false;
-      var prior=all.slice(Math.max(0,first-k),first); if(prior.length<3) return false;
+    /* poste fixe : même montant (écart <= 8 %) chaque mois sur les 3 mois précédents. Renvoie ce montant, 0 sinon. */
+    function fixedLevel(all){ if(!all||P_.isYear||!P_.idxs.length) return 0;
+      var prior=all.slice(Math.max(0,first-3),first); if(prior.length<3) return 0;
       var mn=Math.min.apply(null,prior), mx=Math.max.apply(null,prior), mean=sum(prior)/prior.length;
-      return mn>0&&mean>0&&(mx-mn)/mean<=0.08; }
+      return (mn>0&&mean>0&&(mx-mn)/mean<=0.08)? mean : 0; }
     function calc(all,hist,spentNow,exc){
       if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc!=='incl'?c.exc:null);
-      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,fixed:isFixed(c.all),
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:isFixed(s.all)}; })}; }); }
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,fixed:fixedLevel(c.all),
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:fixedLevel(s.all)}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
-  function expd(c){ return c.fixed? c.avg : c.avg*ELAPSED; }
+  function expd(c){ return c.fixed? c.fixed : c.avg*ELAPSED; }
   function status(c){
-    if(c.fixed){ var df=c.spent-c.avg;
-      if(Math.abs(df)<=Math.max(5,c.avg*0.02)) return {k:'ok',t:'Fixe, à jour'};
+    if(c.fixed){ var df=c.spent-c.fixed;
+      if(Math.abs(df)<=Math.max(5,c.fixed*0.02)) return {k:'ok',t:'Fixe, à jour'};
       if(df<0) return {k:'ok',t:'Pas encore prélevé'};
-      return df>Math.max(MIN_EUR,c.avg*0.15)?{k:'bad',t:'Au-dessus du montant fixe'}:{k:'warn',t:'À surveiller'}; }
+      return df>Math.max(MIN_EUR,c.fixed*0.15)?{k:'bad',t:'Au-dessus du montant fixe'}:{k:'warn',t:'À surveiller'}; }
     var p=c.spent/c.avg, gap=p-ELAPSED, over=c.spent-c.avg*ELAPSED;
     if(over<MIN_EUR) return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'};
     if(gap>TOL) return {k:'bad',t:'En avance'}; if(gap>0.05) return {k:'warn',t:'À surveiller'}; return {k:'ok',t:p<ELAPSED-0.15?'En retard':'Dans le rythme'}; }
@@ -87,7 +87,7 @@
 
   /* ---------- postes ---------- */
   function aria(c,extra){ return Math.round(c.spent/c.avg*100)+' % de la moyenne dépensés, '+Math.round(ELAPSED*100)+' % du mois écoulé. '+extra; }
-  function bar2(c){ var s=status(c), e=expd(c), d=c.spent-e, w=Math.min(Math.abs(d)/(c.avg*0.5),1)*50, pos=d>=0;
+  function bar2(c){ var s=status(c), e=expd(c), d=c.spent-e, w=Math.min(Math.abs(d)/((c.fixed||c.avg)*0.5),1)*50, pos=d>=0;
     return '<div class="bar" role="img" aria-label="'+aria(c,'Écart au rythme attendu : '+Math.round(d)+' euros')+'"><i class="'+s.k+'" style="'+(pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i><b style="left:50%"></b></div><div class="gapl muted"><span class="'+s.k+'t">'+(pos?'+':'−')+eur(Math.abs(d))+'</span> par rapport au rythme attendu ('+eur(e)+')</div>'; }
   function compactCard(list,sub){
     var ecarts=S.view==='ecarts', T=sub?'div':'button';
@@ -96,7 +96,7 @@
     else { var pool=applyF(list), keep=pool;
       if(!S.all&&pool.length>8){ keep=pool.slice().sort(function(a,b){return Math.max(b.spent,b.avg)-Math.max(a.spent,a.avg)}).slice(0,8); extra=pool.length-keep.length; }
       cats=srt(keep,ecarts); }
-    function info(c){ var s=status(c), e=expd(c), pct=c.spent/c.avg*100, gap=(c.spent-e)/c.avg*100, d=c.spent-e; return {c:c,s:s,k:s.k,pct:pct,gap:gap,d:d,e:e,pos:gap>=0}; }
+    function info(c){ var s=status(c), e=expd(c), pct=c.spent/c.avg*100, gap=(c.spent-e)/(c.fixed||c.avg)*100, d=c.spent-e; return {c:c,s:s,k:s.k,pct:pct,gap:gap,d:d,e:e,pos:gap>=0}; }
     function lab(x){ return esc(x.c.n)+' : '+(ecarts?((x.pos?'+':'−')+Math.round(Math.abs(x.d))+(x.c.fixed?' euros par rapport au montant fixe':' euros par rapport au rythme attendu')):(Math.round(x.c.spent)+' euros, '+Math.round(x.pct)+' % de la moyenne de '+Math.round(x.c.avg)+' euros'))+', '+x.s.t; }
     function upn(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="display:block;font-size:10.5px;font-weight:500;line-height:1.2">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
     var items=cats.map(info), body;
