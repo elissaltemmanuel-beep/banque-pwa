@@ -121,7 +121,7 @@
   function niceCeil(v){ var step=v>12000?5000:v>6000?2000:v>2500?1000:v>1000?500:100; return Math.max(step,Math.ceil(v*1.08/step)*step); }
   function maxOf(a){ return a.reduce(function(m,v){return v>m?v:m},0); }
   function chartInner(){
-    var PR=per(), P=D.proj, C=D.curve, G=120, B=140, N=30, gr=S.f.graph, svg='', sum_='', leg='', badge='', aria='', title=PR.label;
+    var PR=per(), P=D.proj, C=D.curve, G=150, B=170, N=30, gr=S.f.graph, svg='', sum_='', leg='', badge='', aria='', title=PR.label;
     var poste=S.f.poste?CATS.filter(function(c){return c.id===S.f.poste})[0]:null, sous=poste&&S.f.sous?poste.subs.filter(function(s){return s.n===S.f.sous})[0]:null;
     var COL={solde:'var(--accent)',dep:'var(--accent)',rev:'var(--c2)'};
     function X(i){ return 10+i/(Math.max(N-1,1))*330; }
@@ -155,11 +155,11 @@
       function kv(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
       N=12; var col=poste?'var(--accent)':COL[gr];
       slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, mn=+key.slice(5,7)-1, lab=MOIS_C[mn]||'', sel=n===hi, last=n===curSlot, has=v!=null;
-        g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="160" fill="transparent"/>';
+        g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="200" fill="transparent"/>';
         if(has) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(v,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
         if(last&&projV!=null) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(projV,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>';
         if(!S.hide&&has) g+=txt(cx.toFixed(1),(Y(last&&projV!=null?projV:v,mx)-4),kv(last&&projV!=null?projV:v),{a:'middle',size:14,fill:sel?'var(--text)':'var(--muted)',w:700});
-        g+=txt(cx.toFixed(1),156,lab,{a:'middle',size:11.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:0})+((n===0||mn===0)?txt(cx.toFixed(1),168,key.slice(0,4),{a:'middle',size:8.5}):'')+'</g>'; });
+        g+=txt(cx.toFixed(1),186,lab,{a:'middle',size:11.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:0})+((n===0||mn===0)?txt(cx.toFixed(1),198,key.slice(0,4),{a:'middle',size:8.5}):'')+'</g>'; });
       var comp=vals.filter(function(v,n){return v!=null&&n!==curSlot}), avgV=comp.length>=3? sum(comp)/comp.length : null;
       if(avgV!=null) g+='<line x1="10" x2="'+(VW-10)+'" y1="'+Y(avgV,mx)+'" y2="'+Y(avgV,mx)+'" stroke="var(--muted)" stroke-opacity=".5" stroke-width="1" stroke-dasharray="3 4" pointer-events="none"/>';
       vals=known;
@@ -173,7 +173,7 @@
     return '<div class="kchart">'+(poste?'<div class="row"><h3 style="font-size:14px">'+esc(title)+'</h3>'+badge+'</div>':'')+
       (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+
       '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
-      ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 172" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>')+
+      ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 204" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>')+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div>'; }
 
   /* ---------- écrans ---------- */
