@@ -147,8 +147,9 @@
       for(var ri=11;ri>=0;ri--) roll.push(shiftMonth_(D.today.month,-ri));
       var rolling=PR.isYear? PR.curYear : roll.indexOf(PR.key)>=0;   /* 12 derniers mois glissants, sinon l'année civile choisie */
       for(var mi=1;mi<=12;mi++){ var kk=rolling? roll[mi-1] : yy+'-'+(mi<10?'0':'')+mi; slots.push({key:kk,i:all.indexOf(kk)}); }
+      if(po){ var s0=(so||po).all||[], f0=0; while(f0<s0.length-7&&!s0[f0]) f0++; slots=all.slice(f0).map(function(k,j){ return {key:k,i:f0+j}; }); rolling=true; VW=20+SW*slots.length; }
       var vals, name, curSlot=-1; slots.forEach(function(s,n){ if(s.key===D.today.month) curSlot=n; });
-      if(poste){ var src=(sous||poste).all||[]; vals=slots.map(function(s){return s.i<0?null:(src[s.i]||0)}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:'')+' · '+(rolling?'12 derniers mois':yy); }
+      if(poste){ var src=(sous||poste).all||[]; vals=slots.map(function(s){return s.i<0?null:(src[s.i]||0)}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:'')+' · '+(po?'tout l’historique':rolling?'12 derniers mois':yy); }
       else { var ser=D.seriesAll||[]; vals=slots.map(function(s){ var o=s.i<0?null:ser[s.i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:o.bal) : null; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':'Solde de fin de mois'; title=rolling?'12 derniers mois':'Année '+yy; }
       var projV=null; if(!poste&&curSlot>=0) projV=gr==='dep'?P.depEnd:gr==='rev'?P.revEnd:P.value;
       var known=vals.filter(function(v){return v!=null});
@@ -165,7 +166,7 @@
       if(avgV!=null) g+='<line x1="10" x2="'+(VW-10)+'" y1="'+Y(avgV,mx)+'" y2="'+Y(avgV,mx)+'" stroke="var(--muted)" stroke-opacity=".5" stroke-width="1" stroke-dasharray="3 4" pointer-events="none"/>';
       vals=known;
       var nz=vals.filter(function(v){return v>0}), mean=nz.length? sum(nz)/nz.length : 0;
-      sum_= poste? ('Dépenses mensuelles du poste. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
+      sum_= poste? ('Dépenses mensuelles '+(String(poste.id).slice(0,2)==='m|'?'de ce marchand':'du poste')+'. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
         : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Fin de ce mois : '+eur(P.value)+(P.salary.expected>0?', paie attendue vers le '+P.salary.day+' comprise':'')+'.'+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' Le point le plus bas, juste avant la paie, est de '+eur(P.landing.value)+' au '+fmtDate(P.landing.date)+'.':''):'')
         : (gr==='dep'?'Dépenses':'Revenus')+' de chaque mois, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'');
       aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(projV!=null?'<span>Pointillés : projection</span>':'')+(avgV!=null?'<span><i style="display:inline-block;width:16px;border-top:1px dashed var(--muted);vertical-align:middle;margin-right:5px"></i>Moyenne '+kv(avgV)+'</span>':'')+'<span>Glissez pour voir les mois précédents</span>';
