@@ -46,7 +46,7 @@
 
   function signOut() {
     var t = token; token = null; expires = 0; sheetId = null;
-    ['banque-signed', 'banque-sheet', 'banque-sig', 'banque-cache'].forEach(function (k) { store(k, null); });
+    ['banque-signed', 'banque-sheet', 'banque-sig', 'banque-base', 'banque-cache'].forEach(function (k) { store(k, null); });
     try { if (t && window.google && google.accounts) google.accounts.oauth2.revoke(t, function () {}); } catch (e) {}
   }
 
@@ -184,7 +184,10 @@
       var sig = files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(',');
       return readOps(id).then(function (existing) {
         var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10) };
-        if (!force && load('banque-sig') === sig && existing.length) { info.skipped = true; info.lastSync = load('banque-last'); return { info: info, rows: existing }; }
+        if (!force && load('banque-sig') === sig && existing.length) {
+          // le fichier de base (le plus récent par ses dates) n'est pas forcément le dernier modifié
+          try { var b0 = JSON.parse(load('banque-base') || 'null'); if (b0 && b0.n) { info.fileName = b0.n; info.fileDate = b0.d; } } catch (e) {}
+          info.skipped = true; info.lastSync = load('banque-last'); return { info: info, rows: existing }; }
         var parsed = [], lastErr = null;
         return files.reduce(function (p, f) {
           return p.then(function () {
@@ -203,7 +206,7 @@
           var res = mergeIncremental(existing, base.rows, today(), parseInt(cfg.OVERLAP_DAYS, 10) || 45), rows = res.rows, history = 0;
           parsed.slice(1).forEach(function (p) { var h = mergeHistory(rows, p.rows); rows = h.rows; history += h.added; });
           return writeRange(id, 'Operations', 14, rows).then(function () {
-            store('banque-sig', sig);
+            store('banque-sig', sig); store('banque-base', JSON.stringify({ n: info.fileName, d: info.fileDate }));
             info.skipped = false; info.added = res.added; info.replaced = res.replaced; info.kept = res.kept; info.history = history;
             info.lastSync = new Date().toISOString().slice(0, 16); store('banque-last', info.lastSync);
             return { info: info, rows: rows };
