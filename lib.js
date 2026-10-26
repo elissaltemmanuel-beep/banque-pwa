@@ -554,7 +554,8 @@ function aggregate(rows, todayIso, opts) {
     if (!(r[7] < 0) || r[0] > todayIso || r[6] === 'Mouvements internes') return;
     var k = String(r[4] || r[2] || '').replace(/^(CARTE|PRLV|VIR|SEPA|PAIEMENT)\s+/gi, '').replace(/\s+/g, ' ').trim();
     if (!k) return;
-    var m = merch[k] || (merch[k] = [0, '', 0, '', 0, {}]), mo = r[0].slice(0, 7), x = m[5][mo] || (m[5][mo] = [0, 0]), amt = -r[7];
+    var m = merch[k] || (merch[k] = [0, '', 0, '', 0, {}, []]), mo = r[0].slice(0, 7), x = m[5][mo] || (m[5][mo] = [0, 0]), amt = -r[7];
+    m[6].push([r[0], round2_(amt), r[6] || '']);
     m[0]++; if (r[0] >= m[1]) { m[1] = r[0]; m[2] = round2_(amt); } if (amt > m[4]) { m[3] = r[0]; m[4] = round2_(amt); }
     x[0] = round2_(x[0] + amt); if (+r[0].slice(8, 10) <= dayNow) x[1] = round2_(x[1] + amt);
   });
