@@ -323,6 +323,7 @@
       '<li><b>Atterrissage :</b> solde estimé, moins les dépenses moyennes par carte sur 90 jours, jusqu’à la veille de la paie estimée d’après les six derniers mois.</li></ul>'+
       '<h3 class="ins-h" style="margin-top:4px">Limites</h3><ul class="rul"><li>Un seul compte courant : sans l’export du Livret A, l’épargne réelle est inconnue.</li><li>Les opérations datées après l’export sont présumées exécutées. Les repères externes sont indicatifs, ce ne sont pas des normes.</li></ul>';
     return back+'<div class="rcover"><div class="reye">Rapport d’analyse financière</div><h1>Votre compte courant</h1><p>'+D.stats.rows+' opérations du '+esc(fmtDate(D.stats.from))+' au '+esc(fmtDate(D.stats.to))+'.</p></div>'+
+      '<button class="fbtn no-print" data-act="printreport" style="align-self:flex-start">Enregistrer en PDF</button>'+
       sec('','Synthèse','Que faut-il retenir ?',tiles+consts)+
       sec('01','Le redressement','D’où vient le compte, et où en est-il ?','<p class="rp">'+daysTxt+(dc.min?' Le point le plus bas atteint '+(dc.min.v<0?'−':'')+eur(Math.abs(dc.min.v))+' ('+esc(fmtDate(dc.min.d))+').':'')+'</p>'+years)+
       sec('02','L’équilibre courant','Vos revenus couvrent-ils vos dépenses ?','<p class="rp">Douze derniers mois complets ('+esc(mlab(E.from))+' à '+esc(mlab(E.to))+').</p>'+bars+tab+nuance+gauges)+
@@ -826,6 +827,7 @@
     else if(el.dataset.vper){S.vper=el.dataset.vper;S.vposte=null;render();window.scrollTo(0,0)}
     else if(el.dataset.vposte){S.vposte=el.dataset.vposte;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='vback'){ if(S.vposte) S.vposte=null; else S.vper=null; render();window.scrollTo(0,0)}
+    else if(el.dataset.act==='printreport'){ var t0=document.title; document.title='Rapport-analyse-financiere-'+D.today.iso; var back=function(){ document.title=t0; window.removeEventListener('afterprint',back); }; window.addEventListener('afterprint',back); window.print(); }
     else if(el.dataset.kp){S.kp=el.dataset.kp;render()}
     else if(el.dataset.rsel!==undefined){S.revSel=(S.revSel===el.dataset.rsel)?null:el.dataset.rsel;render()}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;render()}
