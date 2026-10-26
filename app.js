@@ -651,6 +651,14 @@
   /* ---------- bilan annuel ---------- */
 
   /* ---------- Épargne : virements vers les autres comptes (Livret A…) ---------- */
+  function livretCard(){ var Lv=D.livret; if(!Lv) return '';
+    var usage=Lv.usage!=null?Math.min(100,Math.max(0,Lv.usage)):null;
+    return '<h3 style="font-size:16px">Livret A <span class="muted" style="font-size:12px;font-weight:500">déclaré au '+esc(fmtDate(Lv.date))+'</span></h3><div class="card ins"><div class="ins-sec"><div style="font-size:30px;font-weight:600;letter-spacing:-.02em">'+eur(Lv.est)+'</div>'+
+      '<div class="muted" style="font-size:12.5px;line-height:1.4">Solde déclaré '+eur(Lv.solde)+' au '+esc(fmtDate(Lv.date))+(Lv.nSince?', plus '+eur(Lv.since)+' versés depuis ('+Lv.nSince+' virement'+(Lv.nSince>1?'s':'')+' interne'+(Lv.nSince>1?'s':'')+').':', aucun versement depuis.')+'</div></div>'+
+      (usage!=null?'<div class="ins-sec"><h3 class="ins-h">Plafond</h3><div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Plafond '+eur(Lv.plafond)+'</span><b>'+Math.round(Lv.usage)+' %</b></div><span class="pvis dep"><i data-w="'+usage.toFixed(1)+'"></i></span><div class="muted" style="font-size:12px">Il reste '+eur(Lv.reste)+' avant le plafond (hors intérêts acquis).</div></div>':'')+
+      '<div class="ins-sec">'+(Lv.taux!=null?'<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Taux de rémunération</span><b>'+String(Lv.taux).replace('.',',')+' %</b></div>':'')+
+      (Lv.interets!=null?'<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Intérêts nets en cours d’acquisition</span><b>'+eur(Lv.interets,true)+'</b></div>':'')+'</div>'+
+      '<div class="muted" style="font-size:11.5px;line-height:1.4">Chiffres saisis dans le fichier Banque-regles.txt (ligne « @livret »). Mettez-les à jour quand vous voulez ; avec l’export du Livret A, la lecture devient automatique.</div></div>'; }
   function epargneScreen(){
     var E=D.epargne||{accounts:[],total:0}, SA=D.seriesAll||[], sa=SA.slice(-12);
     var sent=sum(sa.map(function(x){return x.sav||0})), allNet=sum(SA.map(function(x){return x.sav||0}));
@@ -676,6 +684,7 @@
         '<div class="muted" style="font-size:11.5px;line-height:1.4">'+(Math.abs(sent-recu)<1?'Les deux montants correspondent.':'Écart de '+eur(Math.abs(sent-recu))+' : des virements ont pu partir vers un compte absent du dossier, ou avoir lieu à la limite des 12 mois.')+'</div></div>'+
         '<div class="ins-sec"><h3 class="ins-h">Total</h3><div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Compte courant</span><b>'+eur(D.soldeEstime!=null?D.soldeEstime:D.solde)+'</b></div><div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Épargne</span><b>'+eur(E.total)+'</b></div><div class="pair" style="grid-template-columns:1fr auto;font-size:15px"><span style="font-weight:600">Ensemble</span><b>'+eur((D.soldeEstime!=null?D.soldeEstime:D.solde)+E.total)+'</b></div></div></div>';
     } else {
+      h+=livretCard();
       h+='<div class="card ins"><div class="ins-sec"><h3 class="ins-h">Ajouter votre Livret A</h3><div class="muted" style="font-size:13px;line-height:1.5">Pour voir le solde, les intérêts et les versements reçus :<br>1. Dans l’appli BoursoBank : Comptes, puis le menu (⋯) et « Exporter mes opérations ».<br>2. Choisissez le Livret A (vous pouvez cocher plusieurs comptes), la période la plus large, le format CSV, « Inclure les documents » désactivé.<br>3. Enregistrez le fichier dans le dossier « Export banque » de votre Drive.<br>4. Ici, ouvrez Plus puis « Relire le dossier maintenant ».</div><div class="muted" style="font-size:11.5px;line-height:1.4">L’appli sépare automatiquement ce compte du compte courant : vos dépenses et votre solde ne sont pas modifiés.</div></div></div>';
     }
     return h; }

@@ -288,7 +288,7 @@ function aggregate(rows, todayIso, opts) {
     lastRealDate = date;
     lastBal[mk] = solde;
     dailyBal[date] = solde;
-    if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) { internalCount++; sav[mk] = (sav[mk] || 0) - amt; return; }
+    if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) { internalCount++; if (!/^apport/i.test(cat)) sav[mk] = (sav[mk] || 0) - amt; return; }
     if (salaryRe.test(r[2]) && amt > 0) {
       salaryByMonth[mk] = (salaryByMonth[mk] || 0) + amt;
       if (!(mk in salaryFirstDay)) salaryFirstDay[mk] = +date.slice(8, 10);
@@ -584,6 +584,7 @@ function aggregate(rows, todayIso, opts) {
     revOps: revOps,
     vac: vacances_(rows, todayIso, opts.sejours),
     rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
+    livret: livret_(rows, todayIso, opts.livret),
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,
@@ -705,6 +706,23 @@ function rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur) {
   return out;
 }
 
+
+
+// ----------------------------------------------------------------- Livret A déclaré
+
+/** Livret A saisi à la main dans le fichier de règles (@livret) : solde connu à une date, plus les versements partis du compte courant depuis. */
+function livret_(rows, todayIso, L) {
+  if (!L || !(L.solde >= 0) || !L.date) return null;
+  var sent = 0, n = 0;
+  rows.forEach(function (r) {
+    var par = r[6] || '', cat = r[5] || '';
+    if (r[0] <= L.date || r[0] > todayIso || !(INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) || /^apport/i.test(cat)) return;
+    sent -= r[7]; n++;
+  });
+  var est = round2_(L.solde + sent);
+  return { solde: round2_(L.solde), date: L.date, plafond: L.plafond || null, taux: L.taux || null, interets: L.interets || null, since: round2_(sent), nSince: n, est: est,
+    usage: L.plafond ? round2_(est / L.plafond * 100) : null, reste: L.plafond ? round2_(Math.max(0, L.plafond - est)) : null };
+}
 
 if (typeof module !== 'undefined') {
   module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory, splitAccounts_: splitAccounts_, savingsSummary_: savingsSummary_,
