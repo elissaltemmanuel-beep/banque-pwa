@@ -287,7 +287,7 @@
     return header()+'<h1 style="font-size:26px">Opérations</h1><input type="search" id="q" placeholder="Rechercher un libellé ou une catégorie" aria-label="Rechercher une opération" value="'+esc(S.q)+'"><div class="card" style="padding:4px 14px" id="oplist">'+opsHtml(r,shown)+'</div>'; }
   function opsHtml(r,shown){ return r.length? opsList(shown)+(r.length>shown.length?'<p class="muted" style="font-size:12px;padding:10px 0">'+shown.length+' sur '+r.length+' opérations. Affinez la recherche pour voir les autres.</p>':'') : '<p class="muted" style="padding:16px 0">Aucune opération ne correspond à cette recherche.</p>'; }
   function plusScreen(){ var dark=S.theme==='dark', s=D.sync||{}, st=D.stats;
-    return '<h1 style="font-size:26px">Plus</h1>'+analyseTeaser()+'<div class="card" style="padding:4px 16px"><button class="switch" data-sub="rules" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.list)+'Règles de catégorisation</span><span class="muted">›</span></button><button class="switch" data-sub="bilan" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.chart)+'Bilan annuel</span><span class="muted">›</span></button></div><div class="card" style="padding:4px 16px"><div class="switch"><span>Masquer les montants</span><button class="tog" data-act="hide" aria-pressed="'+S.hide+'" aria-label="Masquer les montants"></button></div><div class="switch"><span>Thème sombre</span><button class="tog" data-act="theme" aria-pressed="'+dark+'" aria-label="Thème sombre"></button></div>'+(S.lockAvail?'<div class="switch"><span>Verrouiller avec l\'empreinte</span><button class="tog" data-act="lock" aria-pressed="'+Lock.enabled()+'" aria-label="Verrouiller avec l\'empreinte"></button></div>':'')+'</div>'+
+    return '<h1 style="font-size:26px">Plus</h1>'+analyseTeaser()+'<div class="card" style="padding:4px 16px"><button class="switch" data-sub="rules" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.list)+'Règles de catégorisation</span><span class="muted">›</span></button><button class="switch" data-sub="bilan" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.chart)+'Bilan annuel</span><span class="muted">›</span></button><button class="switch" data-sub="epargne" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.pie)+'Épargne et Livret A</span><span class="muted">›</span></button></div><div class="card" style="padding:4px 16px"><div class="switch"><span>Masquer les montants</span><button class="tog" data-act="hide" aria-pressed="'+S.hide+'" aria-label="Masquer les montants"></button></div><div class="switch"><span>Thème sombre</span><button class="tog" data-act="theme" aria-pressed="'+dark+'" aria-label="Thème sombre"></button></div>'+(S.lockAvail?'<div class="switch"><span>Verrouiller avec l\'empreinte</span><button class="tog" data-act="lock" aria-pressed="'+Lock.enabled()+'" aria-label="Verrouiller avec l\'empreinte"></button></div>':'')+'</div>'+
     '<div class="card" style="display:flex;flex-direction:column;gap:8px"><h3 style="font-size:15px">Vos données</h3>'+
       '<div class="muted" style="font-size:13px;line-height:1.5">Dernier export lu : <b style="color:var(--text)">'+esc(s.fileName||'inconnu')+'</b>'+(s.fileDate?' ('+esc(fmtDate(s.fileDate))+')':'')+'<br>'+st.rows+' opérations en mémoire, du '+esc(fmtDate(st.from))+' au '+esc(fmtDate(st.to))+'.'+(s.lastSync?'<br>Dernière synchronisation : '+esc(String(s.lastSync).replace('T',' à ')):'')+'<br>Les mouvements entre vos propres comptes ('+st.internal+') ne sont pas comptés dans les dépenses.</div>'+
       '<button class="fbtn" data-act="sync"'+(S.syncing?' disabled':'')+'>'+(S.syncing?'Lecture du dossier…':'Relire le dossier maintenant')+'</button>'+
@@ -524,6 +524,36 @@
     '<p class="note">Sans plafond, le budget d\'un poste est sa moyenne sur '+S.f.moy+' mois. Appuyez sur un poste pour fixer votre plafond. Il est enregistré dans votre Sheet.</p>'; }
 
   /* ---------- bilan annuel ---------- */
+
+  /* ---------- Épargne : virements vers les autres comptes (Livret A…) ---------- */
+  function epargneScreen(){
+    var E=D.epargne||{accounts:[],total:0}, SA=D.seriesAll||[], sa=SA.slice(-12);
+    var sent=sum(sa.map(function(x){return x.sav||0})), allNet=sum(SA.map(function(x){return x.sav||0}));
+    var mx=Math.max.apply(null,sa.map(function(x){return Math.abs(x.sav||0)}).concat([1]));
+    function ml(k,first){ var m=+k.slice(5,7); return MOIS_C[m-1]+(m===1||first?' '+k.slice(2,4):''); }
+    function rowsHtml(list,get){ var m=Math.max.apply(null,list.map(function(x){return Math.abs(get(x))}).concat([1]));
+      return '<div class="ins-rows">'+list.map(function(x,i){ var v=get(x); return '<div class="ins-row'+(v<0?' neg':'')+'"><div class="ins-top"><span class="ins-nm">'+ml(x.k,i===0)+'</span><span class="ins-v">'+(v?(v<0?'−':'')+eur(Math.abs(v)):'—')+'</span></div><span class="ins-bar"><i style="width:'+(Math.abs(v)/m*100).toFixed(1)+'%"></i></span></div>'; }).join('')+'</div>'; }
+    var h='<button class="back" data-act="subclose">'+ico(I.back)+'Plus</button><h1 style="font-size:26px">Épargne</h1>';
+    h+='<div class="card ins"><div class="ins-sec"><h3 class="ins-h">Mis de côté</h3><div style="font-size:30px;font-weight:600;letter-spacing:-.02em">'+eur(sent)+'</div><div class="muted" style="font-size:12.5px;line-height:1.4">envoyés vers vos autres comptes sur 12 mois, soit environ '+eur(sent/12)+' par mois. Depuis le début de l’historique : '+eur(allNet)+' nets.</div>'+rowsHtml(sa.map(function(x){return {k:x.k,v:x.sav||0}}),function(x){return x.v})+'<div class="muted" style="font-size:11.5px">Ces virements ne sont pas comptés dans vos dépenses. Un montant en moins (−) est un retour vers le compte courant.</div></div></div>';
+    if(E.accounts.length){
+      var recu=sum(E.accounts.map(function(a){return a.apports12}));
+      E.accounts.forEach(function(a,i){ var open=S.epOpen===i, s12=a.series.slice(-12);
+        h+='<h3 style="font-size:16px">'+esc(a.n)+' <span class="muted" style="font-size:12px;font-weight:500">••'+esc(String(a.num).slice(-4))+'</span></h3><div class="card ins"><div class="ins-sec"><div style="font-size:30px;font-weight:600;letter-spacing:-.02em">'+eur(a.solde)+'</div><div class="muted" style="font-size:12.5px;line-height:1.4">au '+esc(fmtDate(a.to))+' · '+a.count+' opérations depuis '+esc(fmtDate(a.from))+'</div>'+
+          '<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Versements, 12 mois</span><b>'+eur(a.apports12)+'</b></div>'+
+          '<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Intérêts, 12 mois</span><b>'+eur(a.interets12)+'</b></div>'+
+          (a.interetsYtd?'<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Intérêts versés cette année</span><b>'+eur(a.interetsYtd)+'</b></div>':'')+
+          (a.retraits12>0?'<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Retraits, 12 mois</span><b>'+eur(a.retraits12)+'</b></div>':'')+'</div>'+
+          '<div class="ins-sec"><h3 class="ins-h">Versements par mois</h3>'+rowsHtml(s12,function(x){return x.dep})+'</div>'+
+          '<button class="fbtn ghost" data-ep="'+i+'" style="width:100%">'+(open?'Masquer les opérations':'Voir les opérations')+'</button>'+(open?'<div style="padding:0 2px">'+opsList(a.ops.map(function(o){return [o[0],o[1],a.n,o[2],0]}))+'</div>':'')+'</div>'; });
+      h+='<div class="card ins"><div class="ins-sec"><h3 class="ins-h">Rapprochement, 12 mois</h3>'+
+        '<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Envoyé depuis le compte courant</span><b>'+eur(sent)+'</b></div>'+
+        '<div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Reçu sur vos comptes d’épargne</span><b>'+eur(recu)+'</b></div>'+
+        '<div class="muted" style="font-size:11.5px;line-height:1.4">'+(Math.abs(sent-recu)<1?'Les deux montants correspondent.':'Écart de '+eur(Math.abs(sent-recu))+' : des virements ont pu partir vers un compte absent du dossier, ou avoir lieu à la limite des 12 mois.')+'</div></div>'+
+        '<div class="ins-sec"><h3 class="ins-h">Total</h3><div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Compte courant</span><b>'+eur(D.soldeEstime!=null?D.soldeEstime:D.solde)+'</b></div><div class="pair" style="grid-template-columns:1fr auto;font-size:13px"><span>Épargne</span><b>'+eur(E.total)+'</b></div><div class="pair" style="grid-template-columns:1fr auto;font-size:15px"><span style="font-weight:600">Ensemble</span><b>'+eur((D.soldeEstime!=null?D.soldeEstime:D.solde)+E.total)+'</b></div></div></div>';
+    } else {
+      h+='<div class="card ins"><div class="ins-sec"><h3 class="ins-h">Ajouter votre Livret A</h3><div class="muted" style="font-size:13px;line-height:1.5">Pour voir le solde, les intérêts et les versements reçus :<br>1. Dans l’appli BoursoBank : Comptes, puis le menu (⋯) et « Exporter mes opérations ».<br>2. Choisissez le Livret A (vous pouvez cocher plusieurs comptes), la période la plus large, le format CSV, « Inclure les documents » désactivé.<br>3. Enregistrez le fichier dans le dossier « Export banque » de votre Drive.<br>4. Ici, ouvrez Plus puis « Relire le dossier maintenant ».</div><div class="muted" style="font-size:11.5px;line-height:1.4">L’appli sépare automatiquement ce compte du compte courant : vos dépenses et votre solde ne sont pas modifiés.</div></div></div>';
+    }
+    return h; }
   function bilanScreen(){ var B=D.bilan||{}, c=B.cur, p=B.prev;
     function delta(a,b,goodUp){ if(!b) return '<span class="muted">—</span>'; var d=(a-b)/b*100, up=d>=0, good=goodUp?up:!up; return '<span class="'+(Math.abs(d)<2?'muted':good?'okt':'badt')+'">'+(up?'+':'−')+Math.abs(Math.round(d))+' %</span>'; }
     function row(l,a,b,goodUp){ return '<div class="pair" style="grid-template-columns:1fr 78px 78px 52px;padding:9px 0;border-bottom:1px solid var(--rim-soft);font-size:13px"><span>'+l+'</span><span style="text-align:right;font-weight:600">'+eur(a)+'</span><span class="muted" style="text-align:right">'+eur(b)+'</span><span style="text-align:right">'+delta(a,b,goodUp)+'</span></div>'; }
@@ -547,7 +577,7 @@
     if(S.tab==='ops') return opsScreen();
     if(S.tab==='subs') return subsScreen();
     if(S.tab==='bud') return budScreen();
-    if(S.tab==='plus') return S.sub==='bilan'?bilanScreen():S.sub==='rules'?rulesScreen():S.sub==='analyse'?analyseScreen():plusScreen();
+    if(S.tab==='plus') return S.sub==='bilan'?bilanScreen():S.sub==='epargne'?epargneScreen():S.sub==='rules'?rulesScreen():S.sub==='analyse'?analyseScreen():plusScreen();
     return S.open? detailScreen() : homeScreen();
   }
   function render(){
@@ -596,7 +626,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -631,6 +661,7 @@
     else if(el.dataset.act==='budsave'||el.dataset.act==='budreset'){ var inp=document.getElementById('budin'), v=el.dataset.act==='budreset'?0:Math.round(+(inp&&inp.value)); if(!(v>=0)) return; S.budBusy=true; render();
       authed('saveBudget',[el.dataset.p,v]).then(function(b){ D.budgets=b; S.budBusy=false; S.bud=null; render(); }).catch(function(err){ S.budBusy=false; S.error=errMsg(err); render(); }); }
     else if(el.dataset.gr){S.f.graph=el.dataset.gr;render()}
+    else if(el.dataset.ep!==undefined){S.epOpen=(S.epOpen===+el.dataset.ep)?null:+el.dataset.ep;render()}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;render()}
     else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}

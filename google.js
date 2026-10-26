@@ -146,6 +146,15 @@
       });
     }).catch(function (e) { if (e.status === 401) throw e; return { rules: [], fixes: [], info: 'erreur : ' + (e.message || e) }; });
   }
+  function readEpargne(id) {
+    return readRange(id, 'Epargne!A2:N').then(function (v) {
+      return v.map(function (r) {
+        while (r.length < 14) r.push('');
+        r[0] = String(r[0]); r[1] = String(r[1]); r[7] = Number(r[7]); r[11] = Number(r[11]); r[9] = String(r[9]);
+        return r;
+      });
+    }, function () { return []; });
+  }
   function readOps(id) {
     return readRange(id, 'Operations!A2:N').then(function (v) {
       return v.map(function (r) {
@@ -202,6 +211,16 @@
           });
         }, Promise.resolve()).then(function () {
           if (!parsed.length) throw lastErr || new Error('Aucun export lisible dans le dossier.');
+          var sp = splitAccounts_(parsed, existing.length ? String(existing[0][9] || '') : ''), otherRows = sp.others;
+          parsed = sp.parsed;
+          if (!parsed.length) {   // le dossier ne contient que d'autres comptes (ex. un export du Livret A seul) : on les range, le compte courant reste tel quel
+            if (!existing.length) throw new Error('Aucune opération du compte courant dans le dossier.');
+            return (otherRows.length ? ensureSheet(id, 'Epargne', COLS).then(function () { return writeRange(id, 'Epargne', 14, otherRows); }) : Promise.resolve()).then(function () {
+              store('banque-sig', sig);
+              info.skipped = false; info.lastSync = new Date().toISOString().slice(0, 16); store('banque-last', info.lastSync);
+              return { info: info, rows: existing };
+            });
+          }
           parsed.sort(function (a, b) {
             var da = a.rows[a.rows.length - 1][0], db = b.rows[b.rows.length - 1][0];
             return da === db ? b.rows.length - a.rows.length : (da < db ? 1 : -1);
@@ -211,6 +230,8 @@
           var res = mergeIncremental(existing, base.rows, today(), parseInt(cfg.OVERLAP_DAYS, 10) || 45), rows = res.rows, history = 0;
           parsed.slice(1).forEach(function (p) { var h = mergeHistory(rows, p.rows); rows = h.rows; history += h.added; });
           return writeRange(id, 'Operations', 14, rows).then(function () {
+            return otherRows.length ? ensureSheet(id, 'Epargne', COLS).then(function () { return writeRange(id, 'Epargne', 14, otherRows); }) : null;
+          }).then(function () {
             store('banque-sig', sig); store('banque-base', JSON.stringify({ n: info.fileName, d: info.fileDate }));
             info.skipped = false; info.added = res.added; info.replaced = res.replaced; info.kept = res.kept; info.history = history;
             info.lastSync = new Date().toISOString().slice(0, 16); store('banque-last', info.lastSync);
@@ -228,10 +249,10 @@
       .then(function (r) { return r ? (sync = r.info, r.rows) : readOps(id); })
       .then(function (rows) {
         if (!rows.length) throw new Error(sync && sync.error ? sync.error : 'Aucune opération pour le moment. Déposez un export CSV dans le dossier d\'export.');
-        return Promise.all([readRules(id), readRulesFile()]).then(function (rr) {
-          var rules = rr[0], fileRules = rr[1].rules;
+        return Promise.all([readRules(id), readRulesFile(), readEpargne(id)]).then(function (rr) {
+          var rules = rr[0], fileRules = rr[1].rules, epRows = rr[2];
           var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(fileRules), exportDate: sync && sync.fileDate });
-          data.sync = sync; data.rules = rules; data.fileRules = fileRules; data.fileRulesInfo = rr[1].info; data.fixes = rr[1].fixes || [];
+          data.sync = sync; data.rules = rules; data.fileRules = fileRules; data.fileRulesInfo = rr[1].info; data.fixes = rr[1].fixes || []; data.epargne = savingsSummary_(epRows, today());
           return readBudgets(id).then(function (b) { data.budgets = b; return data; });
         });
       });

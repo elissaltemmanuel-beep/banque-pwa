@@ -590,7 +590,7 @@ function aggregate(rows, todayIso, opts) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory,
+  module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory, splitAccounts_: splitAccounts_, savingsSummary_: savingsSummary_,
     aggregate: aggregate, addDays_: addDays_, parseNumber_: parseNumber_ };
 }
 
@@ -695,6 +695,59 @@ function detectSubscriptions_(rows, todayIso) {
   var total = 0, count = 0;
   list.forEach(function (x) { if (x.active) { total += x.amt; count++; } });
   return { list: list, total: round2_(total), count: count };
+}
+
+
+// ------------------------------------------------------------ plusieurs comptes (épargne)
+
+/**
+ * Un même dossier peut contenir plusieurs comptes (compte courant, Livret A…). Le compte courant
+ * (celui déjà connu du Sheet, sinon celui qui a le plus d'opérations) alimente l'appli ; les autres sont rangés à part pour l'écran Épargne.
+ * parsed : [{ f, rows }] (lignes de stockage, ordre chronologique). Renvoie { parsed, others }.
+ */
+function splitAccounts_(parsed, preferred) {
+  var cnt = {};
+  parsed.forEach(function (p) { p.rows.forEach(function (r) { var a = String(r[9] || ''); cnt[a] = (cnt[a] || 0) + 1; }); });
+  var primary = preferred && cnt[preferred] ? preferred : (Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; })[0] || ''), others = {}, q = 0;
+  var mains = parsed.map(function (p) {
+    var mine = [], seen = {};
+    p.rows.forEach(function (r) {
+      if (String(r[9] || '') === primary) { mine.push(r); return; }
+      var sg = String(r[9]) + '|' + r[0] + '|' + r[2] + '|' + r[7], o = others[sg] || (others[sg] = []);
+      seen[sg] = (seen[sg] || 0) + 1;
+      if (seen[sg] > o.length) o.push({ r: r, q: q++ });   // la même opération vue dans plusieurs exports n'est gardée qu'une fois
+    });
+    return { f: p.f, rows: mine };
+  }).filter(function (p) { return p.rows.length; });
+  var flat = [];
+  Object.keys(others).forEach(function (k) { others[k].forEach(function (o) { flat.push(o); }); });
+  flat.sort(function (a, b) { return a.r[0] < b.r[0] ? -1 : a.r[0] > b.r[0] ? 1 : a.q - b.q; });
+  return { parsed: mains, others: flat.map(function (o) { return o.r; }), primary: primary };
+}
+
+/** Synthèse des comptes d'épargne : solde, versements, intérêts, série mensuelle, dernières opérations. */
+function savingsSummary_(rows, todayIso) {
+  var by = {}, cur = todayIso.slice(0, 7), keys = [], i;
+  for (i = 23; i >= 0; i--) keys.push(shiftMonth_(cur, -i));
+  rows.forEach(function (r) { var a = String(r[9] || ''); (by[a] = by[a] || []).push(r); });
+  var accounts = Object.keys(by).map(function (a) {
+    var g = by[a], last = g[g.length - 1], ser = {}, since12 = addDays_(todayIso, -365), y = todayIso.slice(0, 4);
+    var apports = 0, interets = 0, retraits = 0, ytd = 0;
+    keys.forEach(function (k) { ser[k] = { dep: 0, int: 0, ret: 0 }; });
+    g.forEach(function (r) {
+      var mk = r[0].slice(0, 7), amt = r[7], isInt = amt > 0 && /INT[EÉ]R[EÊ]TS?/i.test(String(r[2]) + ' ' + String(r[4])), s = ser[mk];
+      if (s) { if (isInt) s.int += amt; else if (amt > 0) s.dep += amt; else s.ret += -amt; }
+      if (r[0] > since12) { if (isInt) interets += amt; else if (amt > 0) apports += amt; else retraits += -amt; }
+      if (isInt && r[0].slice(0, 4) === y) ytd += amt;
+    });
+    return {
+      num: a, n: String(last[10] || 'Compte épargne'), solde: round2_(last[11]), from: g[0][0], to: last[0], count: g.length,
+      apports12: round2_(apports), interets12: round2_(interets), interetsYtd: round2_(ytd), retraits12: round2_(retraits),
+      series: keys.map(function (k) { return { k: k, dep: round2_(ser[k].dep), int: round2_(ser[k].int), ret: round2_(ser[k].ret) }; }),
+      ops: g.slice(-40).reverse().map(function (r) { return [r[0], r[4] || r[2], r[7]]; })
+    };
+  });
+  return { accounts: accounts, total: round2_(accounts.reduce(function (s, x) { return s + x.solde; }, 0)) };
 }
 
 // ------------------------------------------------------------ bilan annuel
