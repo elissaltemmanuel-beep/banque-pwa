@@ -225,7 +225,7 @@
       '<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Les dépenses courantes sont la moyenne de vos paiements par carte sur 90 jours. Si l\'export est ancien, les opérations faites depuis ne sont pas comptées.</p></div>'; }
   function homeScreen(){
     return header()+syncNote()+'<div><div class="muted" style="font-size:14px">'+(D.soldeEstime?'Solde estimé (export du '+esc(fmtDate(D.proj.landing?D.proj.landing.exportDate:D.stats.lastRealDate))+')':'Solde BoursoBank')+'</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
-    landingCard()+vacCard()+chartCard()+(revMode()?revSection():
+    landingCard()+chartCard()+(revMode()?revSection():
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
   }
   /* ---------- rapport d'analyse ---------- */
@@ -278,10 +278,6 @@
     return '<div class="vstack" role="img" aria-label="'+parts.map(function(x){return x[0]+' '+Math.round(x[1]/t*100)+' %'}).join(', ')+'">'+parts.map(function(x,i){return '<i style="width:'+(Math.max(x[1],0)/t*100).toFixed(1)+'%;background:'+VC[i]+'"></i>'}).join('')+'</div>'+
       '<div class="vleg">'+parts.map(function(x,i){return '<span><span class="vdot" style="background:'+VC[i]+'"></span>'+x[0]+' <b>'+eur(x[1])+'</b></span>'}).join('')+'</div>'; }
   function vcmp(v){ return v.cur? (v.prevSame!=null?{ref:v.prevSame,txt:'Même période l’an dernier, au même jour : '+eur(v.prevSame)+'.'}:null) : (v.prev!=null?{ref:v.prev,txt:'Même période l’an dernier : '+eur(v.prev)+'.'}:null); }
-  function vacCard(){ var v=vacCur(); if(!v) return ''; var c=vcmp(v);
-    return '<button class="card vcard" data-vgo="'+esc(v.id)+'" aria-label="Vacances en cours, '+esc(v.n)+', '+Math.round(v.total)+' euros"><div class="row"><span class="badge ok">Vacances en cours</span><span class="muted" style="font-size:12px">jour '+v.day+' sur '+v.len+'</span></div>'+
-      '<div class="row"><h2 style="font-size:18px">'+esc(v.n)+'</h2><span class="muted" style="font-size:12px">'+esc(fmtDate(v.a))+' – '+esc(fmtDate(v.b))+'</span></div>'+
-      '<div class="row" style="align-items:center"><span style="font-size:26px;font-weight:700">'+eur(v.total)+'</span>'+(c?vpct(v.total,c.ref):'')+'</div>'+vstack(v)+(c?'<div class="muted" style="font-size:12px">'+c.txt+'</div>':'')+'</button>'; }
   function vacScreen(){
     var L=vacList(), v=L.filter(function(x){return x.id===S.vper})[0];
     if(S.vper&&!v){ S.vper=null; S.vposte=null; }
@@ -729,7 +725,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep],[data-rsel],[data-vper],[data-vposte],[data-vgo]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep],[data-rsel],[data-vper],[data-vposte]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -765,7 +761,6 @@
       authed('saveBudget',[el.dataset.p,v]).then(function(b){ D.budgets=b; S.budBusy=false; S.bud=null; render(); }).catch(function(err){ S.budBusy=false; S.error=errMsg(err); render(); }); }
     else if(el.dataset.gr){S.f.graph=el.dataset.gr;render()}
     else if(el.dataset.ep!==undefined){S.epOpen=(S.epOpen===+el.dataset.ep)?null:+el.dataset.ep;render()}
-    else if(el.dataset.vgo){S.tab='plus';S.sub='vacances';S.vper=el.dataset.vgo;S.vposte=null;render();window.scrollTo(0,0)}
     else if(el.dataset.vper){S.vper=el.dataset.vper;S.vposte=null;render();window.scrollTo(0,0)}
     else if(el.dataset.vposte){S.vposte=el.dataset.vposte;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='vback'){ if(S.vposte) S.vposte=null; else S.vper=null; render();window.scrollTo(0,0)}
