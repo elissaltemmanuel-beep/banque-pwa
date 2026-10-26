@@ -120,9 +120,9 @@
   /* ---------- graphique de l'accueil ---------- */
   function niceCeil(v){ var step=v>12000?5000:v>6000?2000:v>2500?1000:v>1000?500:100; return Math.max(step,Math.ceil(v*1.08/step)*step); }
   function maxOf(a){ return a.reduce(function(m,v){return v>m?v:m},0); }
-  function chartInner(){
+  function chartInner(po,so){
     var PR=per(), P=D.proj, C=D.curve, G=150, B=170, N=30, gr=S.f.graph, svg='', sum_='', leg='', badge='', aria='', title=PR.label;
-    var poste=S.f.poste?CATS.filter(function(c){return c.id===S.f.poste})[0]:null, sous=poste&&S.f.sous?poste.subs.filter(function(s){return s.n===S.f.sous})[0]:null;
+    var poste=po||(S.f.poste?CATS.filter(function(c){return c.id===S.f.poste})[0]:null), sous=so||(!po&&poste&&S.f.sous?poste.subs.filter(function(s){return s.n===S.f.sous})[0]:null);
     var COL={solde:'var(--accent)',dep:'var(--accent)',rev:'var(--c2)'};
     function X(i){ return 10+i/(Math.max(N-1,1))*330; }
     function Y(v,mx){ return (B-Math.max(0,Math.min(v,mx))/mx*G).toFixed(1); }
@@ -433,15 +433,16 @@
     var pr=ks.slice(Math.max(0,idx-12),idx); if(pr.length>=3) add('Moyenne '+pr.length+' mois','mois entiers',sum(pr.map(function(m){return by[m]?by[m].all:0}))/pr.length);
     var evo='<div class="ins-sec"><h3 class="ins-h">Évolution</h3><div class="ins-row now"><div class="ins-top"><span class="ins-nm">'+(P_.cur?'Ce mois-ci':'Ce mois')+' <small>'+(td?'du 1er au '+DAY:'mois entier')+'</small></span><span class="ins-v">'+eur(now)+'</span></div><span class="ins-bar"><i style="width:'+(now/mx*100).toFixed(1)+'%"></i></span></div>'+
       rows.map(function(r){ return '<div class="ins-row"><div class="ins-top"><span class="ins-nm">'+esc(r.nm)+' <small>'+r.sub+'</small></span><span class="ins-v">'+eur(r.v)+(r.p?' <span class="ins-chip '+r.p.k+'">'+r.p.t+'</span>':'')+'</span></div><span class="ins-bar"><i style="width:'+(r.v/mx*100).toFixed(1)+'%"></i></span></div>'; }).join('')+'</div>';
+    var fake={id:'m|'+key,n:key,all:ks.map(function(m){return by[m]?by[m].all:0})};
     var tot=sum(Object.keys(by).map(function(m){return by[m].all})), facts=[];
     if(n) facts.push([n+' opération'+(n>1?'s':'')+' · '+eur(tot/n,true)+' en moyenne','Au total '+eur(tot)+' depuis le début des données.']);
     if(big) facts.push(['Plus grosse : '+eur(-big[3],true),'Le '+fmtDate(big[0])+'.']);
     if(last) facts.push(['Dernière : '+eur(-last[3],true),'Le '+fmtDate(last[0])+'.']);
     var fh='<div class="ins-sec"><h3 class="ins-h">À retenir</h3>'+facts.map(function(f){ return '<div class="ins-fact"><i></i><div><b>'+f[0]+'</b><span>'+f[1]+'</span></div></div>'; }).join('')+'</div>';
-    return '<div class="row"><h3 style="font-size:16px">Insights · '+esc(key)+'</h3><button class="back" data-msel="'+esc(key)+'" style="min-height:32px;font-size:12.5px">Fermer</button></div><div class="card ins">'+evo+(n?fh:'')+'</div>'; }
+    return '<div class="row"><h3 style="font-size:16px">Insights · '+esc(key)+'</h3><button class="back" data-msel="'+esc(key)+'" style="min-height:32px;font-size:12.5px">Fermer</button></div><div class="card">'+chartInner(fake)+'</div><div class="card ins">'+evo+(n?fh:'')+'</div>'; }
   function detailScreen(){ var c=CATS.filter(function(x){return x.id===S.open})[0]; if(!c){ S.open=null; return homeScreen(); } var sbSel=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, s=status(c), tot=sum(CATS.map(function(x){return x.spent>0?x.spent:0})), share=tot>0&&c.spent>0? '<div style="text-align:right;line-height:1.15;flex:none"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+Math.round(c.spent/tot*100)+' %</div><div class="muted" style="font-size:11.5px">des dépenses</div></div>' : '';
     return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h2 style="font-size:22px">'+esc(c.n)+'</h2><span class="badge '+s.k+'">'+s.t+'</span></div>'+
-    '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+
+    '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+'<div class="card">'+chartInner(c,sbSel)+'</div>'+
     '<h3 style="font-size:16px">Sous-postes</h3>'+compactCard(c.subs,true)+(sbSel?insightsCard(c,sbSel):'')+merchantCard()+
     (function(){ var sb=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, src=sb?sb.ops:c.ops, lbl=sb?sb.n:c.n;
       return '<div class="row"><h3 style="font-size:16px">Opérations'+(sb?' · '+esc(sb.n):'')+'</h3>'+(sb?'<button class="back" data-ssel="'+esc(sb.n)+'" style="min-height:32px;font-size:12.5px">Voir tout le poste</button>':'')+'</div><div class="card" style="padding:4px 14px">'+opsList(src.slice(0,20).map(function(o){return [o[0],o[1],lbl,o[2],o[3]]}),true)+(src.length?'':'<p class="muted" style="padding:14px 0">Aucune opération'+(sb?' récente pour ce sous-poste.':'.')+'</p>')+'</div>'; })(); }
