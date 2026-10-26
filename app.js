@@ -8,6 +8,7 @@
   function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view3:S.view,per:S.per,margin:S.margin})); }catch(e){} }
   document.documentElement.setAttribute('data-theme',S.theme);
   var app=document.getElementById('app');
+  app.addEventListener('scroll',function(e){ var h=e.target; if(h&&h.classList&&h.classList.contains('hscroll')){ S.hsKey=h.dataset.hs; S.hsPos=h.scrollLeft; } },true);
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   var MOIS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 
@@ -21,6 +22,7 @@
   /* ---------- données ---------- */
   function avgOf(h,k){ var a=h.slice(-k); return a.length? a.reduce(function(s,v){return s+v},0)/a.length : 0; }
   var MOIS_INITIALES=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  var MOIS_C=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
   var MOIS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   function kfmt(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
   function addIso(iso,n){ var p=iso.split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n)).toISOString().slice(0,10); }
@@ -99,7 +101,7 @@
     function upn(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="display:block;font-size:10.5px;font-weight:500;line-height:1.2">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
     var items=cats.map(info), body;
     var tot=sum(list.map(function(c){return c.spent>0?c.spent:0})), mx=Math.max.apply(null,items.map(function(x){return x.c.spent}).concat([1]));
-    function small(x){ return ecarts? (x.c.fixed?'fixe ':'attendu ')+eur(x.e) : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
+    function small(x){ return ecarts? (x.c.fixed?'fixe ':'attendu ')+'<b>'+eur(x.e)+'</b>' : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
     function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>') : '<b>'+eur(x.c.spent)+'</b>'; }
     function vis(x){
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
@@ -132,30 +134,34 @@
     function fill(arr){ var last=null,o=[]; arr.forEach(function(v){ if(v!=null) last=v; o.push(last==null?0:last); }); return o; }
     var dot=function(x,y,col,hollow){ return '<circle cx="'+x+'" cy="'+y+'" r="'+(hollow?3.5:4.5)+'" fill="'+(hollow?'var(--bg)':col)+'" stroke="'+(hollow?col:'var(--bg)')+'" stroke-width="2"/>'; };
 
+    var SW=56, VW=20+SW*12;   /* 6 mois visibles, 12 en faisant défiler */
+    function barGrid(mx){ return '<line x1="10" y1="'+B+'" x2="'+(VW-10)+'" y2="'+B+'" stroke="var(--rim-soft)"/><line x1="10" y1="'+Y(mx/2,mx)+'" x2="'+(VW-10)+'" y2="'+Y(mx/2,mx)+'" stroke="var(--rim-soft)" stroke-dasharray="2 4"/>'; }
     if(bars){
       /* barres mensuelles : janvier à décembre de l'année choisie */
-      var all=D.keys||[], slots=[], yy=PR.y;
-      for(var mi=1;mi<=12;mi++){ var kk=yy+'-'+(mi<10?'0':'')+mi; slots.push({key:kk,i:all.indexOf(kk)}); }
+      var all=D.keys||[], slots=[], yy=PR.y, roll=[];
+      for(var ri=11;ri>=0;ri--) roll.push(shiftMonth_(D.today.month,-ri));
+      var rolling=PR.isYear? PR.curYear : roll.indexOf(PR.key)>=0;   /* 12 derniers mois glissants, sinon l'année civile choisie */
+      for(var mi=1;mi<=12;mi++){ var kk=rolling? roll[mi-1] : yy+'-'+(mi<10?'0':'')+mi; slots.push({key:kk,i:all.indexOf(kk)}); }
       var vals, name, curSlot=-1; slots.forEach(function(s,n){ if(s.key===D.today.month) curSlot=n; });
-      if(poste){ var src=(sous||poste).all||[]; vals=slots.map(function(s){return s.i<0?null:(src[s.i]||0)}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:'')+' · '+yy; }
-      else { var ser=D.seriesAll||[]; vals=slots.map(function(s){ var o=s.i<0?null:ser[s.i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:o.bal) : null; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':'Solde de fin de mois'; title='Année '+yy; }
+      if(poste){ var src=(sous||poste).all||[]; vals=slots.map(function(s){return s.i<0?null:(src[s.i]||0)}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:'')+' · '+(rolling?'12 derniers mois':yy); }
+      else { var ser=D.seriesAll||[]; vals=slots.map(function(s){ var o=s.i<0?null:ser[s.i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:o.bal) : null; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':'Solde de fin de mois'; title=rolling?'12 derniers mois':'Année '+yy; }
       var projV=null; if(!poste&&curSlot>=0) projV=gr==='dep'?P.depEnd:gr==='rev'?P.revEnd:P.value;
       var known=vals.filter(function(v){return v!=null});
-      var mx=niceCeil(Math.max(maxOf(known.length?known:[0]),projV||0,1)), bw=330/12, g=grid(mx), hi=PR.isYear? -1 : slots.map(function(s){return s.key}).indexOf(PR.key);
+      var mx=niceCeil(Math.max(maxOf(known.length?known:[0]),projV||0,1)), bw=SW, g=barGrid(mx), hi=PR.isYear? -1 : slots.map(function(s){return s.key}).indexOf(PR.key);
       function kv(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
       N=12; var col=poste?'var(--accent)':COL[gr];
-      slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, lab=MOIS_INITIALES[n]||'', sel=n===hi, last=n===curSlot, has=v!=null;
-        g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[n]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="160" fill="transparent"/>';
-        if(has) g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(v,mx)+'" width="16" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
-        if(last&&projV!=null) g+='<rect x="'+(cx-8).toFixed(1)+'" y="'+Y(projV,mx)+'" width="16" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="4" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>';
-        if(!S.hide&&has) g+=txt(cx.toFixed(1),(Y(last&&projV!=null?projV:v,mx)-4),kv(last&&projV!=null?projV:v),{a:'middle',size:8.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:500});
-        g+=txt(cx.toFixed(1),156,lab,{a:'middle',fill:sel?'var(--text)':'var(--muted)',w:sel?600:0})+'</g>'; });
+      slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, mn=+key.slice(5,7)-1, lab=MOIS_C[mn]||'', sel=n===hi, last=n===curSlot, has=v!=null;
+        g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="160" fill="transparent"/>';
+        if(has) g+='<rect x="'+(cx-13).toFixed(1)+'" y="'+Y(v,mx)+'" width="26" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
+        if(last&&projV!=null) g+='<rect x="'+(cx-13).toFixed(1)+'" y="'+Y(projV,mx)+'" width="26" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>';
+        if(!S.hide&&has) g+=txt(cx.toFixed(1),(Y(last&&projV!=null?projV:v,mx)-4),kv(last&&projV!=null?projV:v),{a:'middle',size:10,fill:sel?'var(--text)':'var(--muted)',w:sel?700:500});
+        g+=txt(cx.toFixed(1),156,lab,{a:'middle',size:10.5,fill:sel?'var(--text)':'var(--muted)',w:sel?600:0})+((n===0||mn===0)?txt(cx.toFixed(1),168,key.slice(0,4),{a:'middle',size:8.5}):'')+'</g>'; });
       vals=known;
       var nz=vals.filter(function(v){return v>0}), mean=nz.length? sum(nz)/nz.length : 0;
       sum_= poste? ('Dépenses mensuelles du poste. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
         : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Fin de ce mois : '+eur(P.value)+(P.salary.expected>0?', paie attendue vers le '+P.salary.day+' comprise':'')+'.'+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' Le point le plus bas, juste avant la paie, est de '+eur(P.landing.value)+' au '+fmtDate(P.landing.date)+'.':''):'')
         : (gr==='dep'?'Dépenses':'Revenus')+' de chaque mois, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'');
-      aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(projV!=null?'<span>Pointillés : projection</span>':'');
+      aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(projV!=null?'<span>Pointillés : projection</span>':'')+'<span>Glissez pour voir les mois précédents</span>';
     } else {
       var dm=D.daily&&D.daily[PR.key], dn=dm?dm.d.length:30; N=PR.cur?DAYS:dn; var nowD=PR.cur?DAY:N;
       if(!dm&&!PR.cur){ sum_='Pas de détail jour par jour pour ce mois. Choisissez « Année » ou un mois plus récent.'; svg=grid(1); aria='Aucune donnée'; }
@@ -188,7 +194,7 @@
     return '<div class="card"><div class="row"><h2 style="font-size:16px">'+esc(title)+'</h2>'+badge+'</div>'+
       (showTog?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Affichage du graphique"><button data-per="mois" aria-pressed="'+(S.per==='mois')+'">Mois</button><button data-per="annee" aria-pressed="'+(S.per!=='mois')+'">Année</button></div></div>':'')+
       '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
-      '<svg viewBox="0 0 350 162" width="100%" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg>'+
+      (bars? '<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 172" style="width:'+(VW/(6*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>' : '<svg viewBox="0 0 350 162" width="100%" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg>')+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div>'; }
 
   /* ---------- écrans ---------- */
@@ -500,6 +506,7 @@
   function render(){
     if(D) CATS=buildCats();
     app.innerHTML='<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="screen fade" id="screen">'+screen()+'</div>'+(S.stage==='ready'?'<nav class="nav" aria-label="Navigation principale">'+TABS.map(function(x){return '<button data-tab="'+x[0]+'"'+(x[0]===S.tab?' aria-current="page"':'')+'>'+ico(x[2])+x[1]+'</button>'}).join('')+'</nav>':'');
+    app.querySelectorAll('.hscroll').forEach(function(h){ h.scrollLeft=(S.hsKey===h.dataset.hs&&S.hsPos!=null)?S.hsPos:h.scrollWidth; });
     requestAnimationFrame(function(){requestAnimationFrame(function(){ app.querySelectorAll('.bar i,.strack i,.pvis i').forEach(function(el){el.style.width=el.dataset.w+'%'}); }); });
     var b=document.getElementById('bal'); if(b&&D&&!reduce&&!S.hide&&S.first){ var t0=performance.now(); (function tick(n){var k=Math.min((n-t0)/900,1),e=1-Math.pow(1-k,3);b.textContent=eur(D.solde*e);if(k<1)requestAnimationFrame(tick)})(t0); }
     if(D) S.first=false;

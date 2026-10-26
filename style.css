@@ -227,3 +227,6 @@ div.prow{cursor:default}
 .pvis.ec i.bad{--ga:var(--g-bad-a);--gb:var(--g-bad-b)}.pvis.ec i.warn{--ga:var(--g-warn-a);--gb:var(--g-warn-b)}.pvis.ec i.ok{--ga:var(--g-ok-a);--gb:var(--g-ok-b)}
 .pvis.ec i.r{left:50%;border-radius:0 99px 99px 0;background:linear-gradient(90deg,var(--ga),var(--gb))}
 .pvis.ec i.l{right:50%;left:auto;border-radius:99px 0 0 99px;background:linear-gradient(270deg,var(--ga),var(--gb))}
+.hscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none}
+.hscroll::-webkit-scrollbar{display:none}
+.psm b{font-weight:700;color:var(--text)}
