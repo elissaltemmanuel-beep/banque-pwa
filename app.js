@@ -197,6 +197,7 @@
     var showTog=!poste&&!PR.isYear;
     return '<div class="card"><div class="row"><h2 style="font-size:16px">'+esc(title)+'</h2>'+badge+'</div>'+
       (showTog?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Affichage du graphique"><button data-per="mois" aria-pressed="'+(S.per==='mois')+'">Mois</button><button data-per="annee" aria-pressed="'+(S.per!=='mois')+'">Année</button></div></div>':'')+
+      (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+
       '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
       (bars? '<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 172" style="width:'+(VW/(6*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>' : '<svg viewBox="0 0 350 162" width="100%" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg>')+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div>'; }
@@ -497,7 +498,7 @@
 
   /* ---------- abonnements ---------- */
   function subLine(x){ return '<div class="opline"><div class="l"><span style="font-weight:600;font-size:14px">'+esc(x.n)+'</span><span class="muted" style="font-size:12px">'+(x.active?'Prochain vers le '+esc(fmtDate(x.next)):'Dernier le '+esc(fmtDate(x.last)))+' · '+esc(x.par)+'</span>'+
-      (x.hausse?'<span class="badge warn" style="align-self:flex-start;margin-top:4px">Hausse : '+eur(x.hausse.from,true)+' → '+eur(x.hausse.to,true)+'</span>':'')+(x.par==='Non catégorisé'?'<button class="badge warn" data-rpickn="'+esc(x.n)+'" style="align-self:flex-start;margin-top:4px;border:0;cursor:pointer">À classer</button>':'')+(x.nouveau&&!x.hausse?'<span class="badge ok" style="align-self:flex-start;margin-top:4px">Nouveau</span>':'')+'</div><span style="font-weight:600">'+eur(x.amt,true)+'</span></div>'; }
+      (x.hausse?'<span class="badge warn" style="align-self:flex-start;margin-top:4px">Hausse : '+eur(x.hausse.from,true)+' → '+eur(x.hausse.to,true)+'</span>':'')+(x.par==='Non catégorisé'?'<button class="badge warn" data-rpickn="'+esc(x.n)+'" style="align-self:flex-start;margin-top:4px;border:0;cursor:pointer">À classer</button>':'')+(x.nouveau&&!x.hausse?'<span class="badge ok" style="align-self:flex-start;margin-top:4px">Nouveau</span>':'')+'</div><span style="font-weight:600;text-align:right">'+(x.yearly?eur(x.yearly,true)+' <small class="muted" style="font-weight:500">/ an</small>':eur(x.amt,true))+'</span></div>'; }
   function subsScreen(){ var B=D.subs||{list:[],total:0,count:0}, act=B.list.filter(function(x){return x.active}), off=B.list.filter(function(x){return !x.active}), watch=act.filter(function(x){return x.hausse||x.nouveau});
     return header()+'<h1 style="font-size:26px">Abonnements</h1>'+
     '<div class="card"><div class="muted" style="font-size:13px">Prélèvements récurrents actifs</div><div style="font-size:32px;font-weight:600;letter-spacing:-.02em">'+eur(B.total)+' <span class="muted" style="font-size:14px;font-weight:500">par mois</span></div><div class="muted" style="font-size:13px;margin-top:2px">'+B.count+' abonnement'+(B.count>1?'s':'')+' · environ '+eur(B.total*12)+' par an</div></div>'+
@@ -595,7 +596,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -629,6 +630,7 @@
     else if(el.dataset.act==='subclose'){S.sub=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='budsave'||el.dataset.act==='budreset'){ var inp=document.getElementById('budin'), v=el.dataset.act==='budreset'?0:Math.round(+(inp&&inp.value)); if(!(v>=0)) return; S.budBusy=true; render();
       authed('saveBudget',[el.dataset.p,v]).then(function(b){ D.budgets=b; S.budBusy=false; S.bud=null; render(); }).catch(function(err){ S.budBusy=false; S.error=errMsg(err); render(); }); }
+    else if(el.dataset.gr){S.f.graph=el.dataset.gr;render()}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;render()}
     else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}

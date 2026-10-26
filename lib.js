@@ -168,7 +168,8 @@ var TAXO_ = [
   [/^CLUB/, 'Loisirs et sorties', 'Sport et associations'],
   [/^DEPENSES JEUX/, 'Loisirs et sorties', 'Jeux'],
   [/^LOISIRS/, 'Loisirs et sorties', 'Autres loisirs'],
-  [/^(HEBERGEMENT|AGENCES DE VOYAGES|LOCATION DE VEHICULES)/, 'Transports et voyages', 'Voyages et hébergement'],
+  [/^HEBERGEMENT/, 'Transports et voyages', 'Hébergement'],
+  [/^(AGENCES DE VOYAGES|LOCATION DE VEHICULES)/, 'Transports et voyages', 'Agences et locations'],
   [/^TAXIS/, 'Transports et voyages', 'Taxis'],
   [/^TRANSPORTS LONGUE/, 'Transports et voyages', 'Train et avion'],
   [/^TRANSPORTS QUOTIDIENS/, 'Transports et voyages', 'Transports du quotidien'],
@@ -249,7 +250,7 @@ function aggregate(rows, todayIso, opts) {
   for (i = 12; i >= 1; i--) histKeys.push(shiftMonth_(cur, -i));
 
   var firstK = rows.length ? rows.reduce(function (m, r) { return r[0] < m ? r[0] : m; }, rows[0][0]).slice(0, 7) : cur;
-  var nAll = Math.min(48, (y - +firstK.slice(0, 4)) * 12 + (m - +firstK.slice(5, 7)) + 1), allKeys = [];
+  var nAll = Math.min(96, (y - +firstK.slice(0, 4)) * 12 + (m - +firstK.slice(5, 7)) + 1), allKeys = [];
   for (i = nAll - 1; i >= 0; i--) allKeys.push(shiftMonth_(cur, -i));
 
   var spend = {}, spendTD = {}, subSpendTD = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
@@ -600,6 +601,7 @@ if (typeof module !== 'undefined') {
 function subKey_(label) {
   return String(label || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/\b(CARTE|CB|PRLV|PRELEVEMENT|SEPA|VIR|VIREMENT|PAIEMENT|ACHAT|FACTURE|FACT|REF|ECH|ECHEANCE)\b/g, ' ')
+    .split(/\s+/).filter(function (w) { return !/\d/.test(w); }).join(' ')   // les mots avec un chiffre (identifiants, dates) changent chaque mois : on les ignore
     .replace(/[^A-Z ]/g, ' ').split(/\s+/).filter(function (w) { return w.length > 1; }).slice(0, 3).join(' ');
 }
 
@@ -623,22 +625,23 @@ function detectSubscriptions_(rows, todayIso) {
     (groups[k] = groups[k] || []).push({ d: date, a: -amt, n: r[4] || r[2], p: par || 'Non catégorisé', c: cat });
   });
   var list = [];
-  Object.keys(groups).forEach(function (k) {
-    var g = groups[k].sort(function (x, z) { return x.d < z.d ? -1 : x.d > z.d ? 1 : 0; });
+
+  // abonnement mensuel : environ un passage par mois, au plus 2 niveaux de prix
+  function monthly(k, g) {
     var months = {};
     g.forEach(function (o) { months[o.d.slice(0, 7)] = 1; });
-    if (g.length < 3 || Object.keys(months).length < 3) return;
+    if (g.length < 3 || Object.keys(months).length < 3) return null;
     var recent = g.slice(-8), gaps = [];
     for (var i = 1; i < recent.length; i++) gaps.push(daysBetween_(recent[i - 1].d, recent[i].d));
     var okGaps = gaps.filter(function (x) { return x >= 24 && x <= 38; }).length;
-    if (median_(gaps) < 26 || median_(gaps) > 35 || okGaps / gaps.length < 0.7) return;
+    if (median_(gaps) < 26 || median_(gaps) > 35 || okGaps / gaps.length < 0.7) return null;
     // montant stable : au plus 2 niveaux de prix (une hausse), chacun vu au moins 2 fois
     var levels = [];
     g.slice(-6).forEach(function (o) {
       var lv = levels.filter(function (l) { return Math.abs(l.a - o.a) <= l.a * 0.03; })[0];
       if (lv) lv.n++; else levels.push({ a: o.a, n: 1 });
     });
-    if (levels.length > 2 || levels.some(function (l) { return l.n < 2; })) return;
+    if (levels.length > 2 || levels.some(function (l) { return l.n < 2; })) return null;
     var last = g[g.length - 1], amt = last.a, hausse = null, j;
     for (j = g.length - 1; j > 0 && Math.abs(g[j - 1].a - amt) <= amt * 0.02; j--) {}
     if (j > 0 && g[j].d >= addDays_(todayIso, -100) && Math.abs(g[j - 1].a - amt) > 0.5 && amt > g[j - 1].a) {
@@ -646,10 +649,46 @@ function detectSubscriptions_(rows, todayIso) {
     }
     var nm = shiftMonth_(last.d.slice(0, 7), 1);
     var next = nm + '-' + pad2_(Math.min(+last.d.slice(8, 10), daysInMonth_(+nm.slice(0, 4), +nm.slice(5, 7))));
-    list.push({
+    return {
       k: k, n: last.n, amt: round2_(amt), par: last.p, c: last.c, last: last.d, next: next, count: g.length,
       since: g[0].d, active: daysBetween_(last.d, todayIso) <= 45, hausse: hausse,
       nouveau: g[0].d >= addDays_(todayIso, -100)
+    };
+  }
+
+  // abonnement annuel : au moins 3 passages du même montant, à environ un an d'écart
+  function yearly(k, g) {
+    if (g.length < 3) return null;   // 3 passages au moins : sinon un simple achat deux années de suite passerait pour un abonnement
+    for (var i = 1; i < g.length; i++) {
+      var gap = daysBetween_(g[i - 1].d, g[i].d);
+      if (gap < 350 || gap > 380) return null;
+    }
+    var last = g[g.length - 1], ny = (+last.d.slice(0, 4) + 1) + last.d.slice(4);
+    return {
+      k: k, n: last.n, amt: round2_(last.a / 12), yearly: round2_(last.a), par: last.p, c: last.c, last: last.d, next: ny,
+      count: g.length, since: g[0].d, active: daysBetween_(last.d, todayIso) <= 400, hausse: null,
+      nouveau: g[0].d >= addDays_(todayIso, -100)
+    };
+  }
+
+  // même libellé mais plusieurs abonnements en parallèle (ex. un service avec plusieurs offres) : on sépare par montant
+  function byAmount(g) {
+    var s = g.slice().sort(function (x, z) { return x.a - z.a; }), out = [];
+    s.forEach(function (o) {
+      var c = out[out.length - 1];
+      if (c && o.a <= c[0].a * 1.03) c.push(o); else out.push([o]);
+    });
+    return out.map(function (c) { return c.sort(function (x, z) { return x.d < z.d ? -1 : x.d > z.d ? 1 : 0; }); });
+  }
+
+  Object.keys(groups).forEach(function (k) {
+    var g = groups[k].sort(function (x, z) { return x.d < z.d ? -1 : x.d > z.d ? 1 : 0; });
+    var e = monthly(k, g);
+    if (e) { list.push(e); return; }
+    byAmount(g).forEach(function (c) {
+      var kk = k + ' ' + round2_(c[0].a), m = c.length >= 3 ? monthly(kk, c) : null;
+      var y = m || yearly(kk, c);
+      if (y) list.push(y);
     });
   });
   list.sort(function (a, b) { return b.amt - a.amt; });
