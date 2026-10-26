@@ -391,3 +391,20 @@ h2,h3{font-size:16px;font-weight:700;margin:0 4px}
 
 .switch[data-sub]{font-weight:600;font-size:14px}
 .back{color:var(--accent)!important;font-weight:600;font-size:14px;padding:4px 4px;min-height:36px}
+
+/* ===== Panneaux et filtres : plus aucun effet verre ===== */
+.scrim{background:rgba(10,10,30,.4)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+:root:root .fpanel.fpanel,:root:root .fpanel.fpB{background:var(--bg)!important;opacity:1!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border:0!important;box-shadow:0 0 40px rgba(10,10,40,.28)!important}
+.fsec{border-bottom-color:var(--track)}
+.fchip{background:var(--glass)!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.fchip[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 16%,var(--glass))!important;color:var(--accent)!important;border:0!important;box-shadow:none!important}
+.fsel select{background-color:var(--glass)!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.fseg{background:var(--track)!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.fseg button[aria-pressed="true"]{background:var(--glass)!important;border:0!important;box-shadow:none!important;color:var(--text)!important}
+.pchip{background:var(--glass)!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.fhead .iconbtn{background:var(--glass)!important}
+.fbtn.ghost{background:var(--glass)!important}
+
+:root:root .fchip,:root:root .fsel select,:root:root .fseg,:root:root .pchip{border:0!important}
+
+:root:root :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
