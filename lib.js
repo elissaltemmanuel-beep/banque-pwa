@@ -582,6 +582,7 @@ function aggregate(rows, todayIso, opts) {
     bilan: bilan_(yr, y),
     ops: opsAll,
     revOps: revOps,
+    vac: vacances_(rows, todayIso, opts.sejours),
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,
@@ -590,9 +591,84 @@ function aggregate(rows, todayIso, opts) {
   };
 }
 
+var VAC_C_ = [   // vacances scolaires zone C : [nom, premier jour, dernier jour] (data.education.gouv.fr, calendrier officiel)
+  ['Toussaint 2019', '2019-10-19', '2019-11-03'], ['Noël 2019', '2019-12-21', '2020-01-05'], ['Hiver 2020', '2020-02-08', '2020-02-23'],
+  ['Printemps 2020', '2020-04-04', '2020-04-19'], ['Été 2020', '2020-07-04', '2020-08-31'], ['Toussaint 2020', '2020-10-17', '2020-11-01'],
+  ['Noël 2020', '2020-12-19', '2021-01-03'], ['Hiver 2021', '2021-02-13', '2021-02-28'], ['Printemps 2021', '2021-04-10', '2021-04-25'],
+  ['Été 2021', '2021-07-06', '2021-09-01'], ['Toussaint 2021', '2021-10-23', '2021-11-07'], ['Noël 2021', '2021-12-18', '2022-01-02'],
+  ['Hiver 2022', '2022-02-19', '2022-03-06'], ['Printemps 2022', '2022-04-23', '2022-05-08'], ['Été 2022', '2022-07-07', '2022-08-31'],
+  ['Toussaint 2022', '2022-10-22', '2022-11-06'], ['Noël 2022', '2022-12-17', '2023-01-02'], ['Hiver 2023', '2023-02-18', '2023-03-05'],
+  ['Printemps 2023', '2023-04-22', '2023-05-08'], ['Été 2023', '2023-07-08', '2023-09-03'], ['Toussaint 2023', '2023-10-21', '2023-11-05'],
+  ['Noël 2023', '2023-12-23', '2024-01-07'], ['Hiver 2024', '2024-02-10', '2024-02-25'], ['Printemps 2024', '2024-04-06', '2024-04-21'],
+  ['Été 2024', '2024-07-06', '2024-09-01'], ['Toussaint 2024', '2024-10-19', '2024-11-03'], ['Noël 2024', '2024-12-21', '2025-01-05'],
+  ['Hiver 2025', '2025-02-15', '2025-03-02'], ['Printemps 2025', '2025-04-12', '2025-04-27'], ['Été 2025', '2025-07-05', '2025-08-31'],
+  ['Toussaint 2025', '2025-10-18', '2025-11-02'], ['Noël 2025', '2025-12-20', '2026-01-04'], ['Hiver 2026', '2026-02-21', '2026-03-08'],
+  ['Printemps 2026', '2026-04-18', '2026-05-03'], ['Été 2026', '2026-07-04', '2026-08-31'], ['Toussaint 2026', '2026-10-17', '2026-11-01'],
+  ['Noël 2026', '2026-12-19', '2027-01-03'], ['Hiver 2027', '2027-02-06', '2027-02-21'], ['Printemps 2027', '2027-04-03', '2027-04-18'],
+  ['Été 2027', '2027-07-03', '2027-09-01'], ['Toussaint 2027', '2027-10-23', '2027-11-07'], ['Noël 2027', '2027-12-18', '2028-01-02']
+];
+
+// ----------------------------------------------------------------- vacances
+
+/** Vacances scolaires (zone C) : dépenses par période, postes et opérations. rows : lignes après règles. sejours : [{n, a, b}] forcés par le fichier de règles. */
+function vacances_(rows, todayIso, sejours) {
+  var BOOK = 120, per = VAC_C_.map(function (v) { return { n: v[0], a: v[1], b: v[2] }; });
+  (sejours || []).forEach(function (s) {
+    var p = per.filter(function (x) { return x.n === s.n; })[0];
+    if (p) { p.a = s.a; p.b = s.b; } else per.push({ n: s.n, a: s.a, b: s.b });
+  });
+  per.sort(function (x, y) { return x.a < y.a ? -1 : 1; });
+  var first = rows.length ? rows[0][0] : todayIso;
+  per = per.filter(function (p) { return p.a <= todayIso && p.b >= first; });
+  per.forEach(function (p) { p.postes = {}; p.items = []; });
+  function cls(par, cat) {
+    if (par === 'Transports et voyages') {
+      if (cat === 'Hébergement' || cat === 'Agences et locations') return 'Hébergement';
+      if (cat === 'Train et avion') return 'Train et avion';
+      if (cat === 'Transports du quotidien') return null;
+      return 'Transports sur place';
+    }
+    return (par === 'Alimentation' || par === 'Loisirs et sorties' || par === 'Shopping et équipement' || par === 'Divers') ? par : null;
+  }
+  rows.forEach(function (r) {
+    var date = r[0], par = r[6] || '', cat = r[5] || '', amt = r[7];
+    if (date > todayIso || INCOME_PARENTS.indexOf(par) > -1 || INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) return;
+    var c = cls(par, cat); if (!c) return;
+    var home = null, pre = false, i;
+    for (i = 0; i < per.length; i++) if (date >= per[i].a && date <= per[i].b) { home = per[i]; break; }
+    if (!home && (c === 'Hébergement' || c === 'Train et avion')) {
+      for (i = 0; i < per.length; i++) if (per[i].a > date) { if (daysBetween_(date, per[i].a) <= BOOK) { home = per[i]; pre = true; } break; }
+    }
+    if (!home) return;
+    var X = home.postes[c] || (home.postes[c] = { n: c, amt: 0, early: 0, subs: {}, ops: [] });
+    X.amt -= amt; if (pre) X.early -= amt;
+    X.subs[cat || c] = (X.subs[cat || c] || 0) - amt;
+    X.ops.push([date, r[4] || r[2], round2_(-amt), pre ? 1 : 0]);
+    home.items.push([date, -amt]);
+  });
+  function total(p) { return Object.keys(p.postes).reduce(function (s, k) { return s + p.postes[k].amt; }, 0); }
+  function part(p, names) { return names.reduce(function (s, k) { return s + (p.postes[k] ? p.postes[k].amt : 0); }, 0); }
+  var res = per.map(function (p) {
+    var T = total(p), H = part(p, ['Hébergement']), Tr = part(p, ['Train et avion']), early = Object.keys(p.postes).reduce(function (s, k) { return s + p.postes[k].early; }, 0);
+    var y = +p.n.slice(-4), prevN = p.n.slice(0, -4) + (y - 1), pv = per.filter(function (x) { return x.n === prevN; })[0];
+    var cur = todayIso >= p.a && todayIso <= p.b, len = daysBetween_(p.a, p.b) + 1, day = cur ? daysBetween_(p.a, todayIso) + 1 : len, prevSame = null;
+    if (pv) { var lim = addDays_(pv.a, day - 1); prevSame = pv.items.reduce(function (s, it) { return it[0] <= lim ? s + it[1] : s; }, 0); }
+    var same = per.filter(function (x) { return x !== p && x.n.slice(0, -4) === p.n.slice(0, -4) && x.b < todayIso; }).map(total).filter(function (v) { return v > 0; });
+    var postes = Object.keys(p.postes).map(function (k) { var X = p.postes[k];
+      return { n: X.n, amt: round2_(X.amt), early: round2_(X.early),
+        subs: Object.keys(X.subs).map(function (s) { return { n: s, amt: round2_(X.subs[s]) }; }).sort(function (a, b) { return b.amt - a.amt; }),
+        ops: X.ops.sort(function (a, b) { return a[0] < b[0] ? 1 : -1; }).slice(0, 40) }; })
+      .filter(function (x) { return x.amt > 0; }).sort(function (a, b) { return b.amt - a.amt; });
+    return { id: p.n.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ''), n: p.n, a: p.a, b: p.b, len: len, day: day, cur: cur, total: round2_(T), h: round2_(H), t: round2_(Tr), p: round2_(T - H - Tr),
+      early: round2_(early), prev: pv ? round2_(total(pv)) : null, prevSame: prevSame == null ? null : round2_(prevSame),
+      avg: same.length ? round2_(same.reduce(function (a, b) { return a + b; }, 0) / same.length) : null, postes: postes };
+  }).filter(function (p) { return p.total > 0 || p.cur; });
+  return res.reverse();
+}
+
 if (typeof module !== 'undefined') {
   module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory, splitAccounts_: splitAccounts_, savingsSummary_: savingsSummary_,
-    aggregate: aggregate, addDays_: addDays_, parseNumber_: parseNumber_ };
+    aggregate: aggregate, vacances_: vacances_, addDays_: addDays_, parseNumber_: parseNumber_ };
 }
 
 

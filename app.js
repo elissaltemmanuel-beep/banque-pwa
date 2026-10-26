@@ -17,7 +17,7 @@
   function fmtDate(iso){ if(!iso) return ''; var p=iso.split('-'); return +p[2]+' '+MOIS[+p[1]-1]; }
   function daysBetween(a,b){ var x=a.split('-'),y=b.split('-'); return Math.round((Date.UTC(+y[0],+y[1]-1,+y[2])-Date.UTC(+x[0],+x[1]-1,+x[2]))/864e5); }
   function ico(p){ return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+p+'</svg>'; }
-  var I={home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',more:'<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',eyeoff:'<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.3 2 12 2 12s3.6 7 10 7a10 10 0 0 0 4.4-1"/>',back:'<path d="M15 18l-6-6 6-6"/>',filter:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',close:'<path d="M6 6l12 12M18 6L6 18"/>',bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',pie:'<circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.4 6.4"/>',chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+  var I={sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',more:'<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',eyeoff:'<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4M6.5 6.6C3.7 8.3 2 12 2 12s3.6 7 10 7a10 10 0 0 0 4.4-1"/>',back:'<path d="M15 18l-6-6 6-6"/>',filter:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',close:'<path d="M6 6l12 12M18 6L6 18"/>',bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',pie:'<circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.4 6.4"/>',chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
 
   /* ---------- données ---------- */
   function avgOf(h,k){ var a=h.slice(-k); return a.length? a.reduce(function(s,v){return s+v},0)/a.length : 0; }
@@ -225,9 +225,57 @@
       '<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Les dépenses courantes sont la moyenne de vos paiements par carte sur 90 jours. Si l\'export est ancien, les opérations faites depuis ne sont pas comptées.</p></div>'; }
   function homeScreen(){
     return header()+syncNote()+'<div><div class="muted" style="font-size:14px">'+(D.soldeEstime?'Solde estimé (export du '+esc(fmtDate(D.proj.landing?D.proj.landing.exportDate:D.stats.lastRealDate))+')':'Solde BoursoBank')+'</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
-    landingCard()+chartCard()+(revMode()?revSection():
+    landingCard()+vacCard()+chartCard()+(revMode()?revSection():
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
   }
+  /* ---------- vacances (zone C) ---------- */
+  function vacList(){ return (D&&D.vac)||[]; }
+  function vacCur(){ return vacList().filter(function(v){return v.cur})[0]; }
+  function vpct(a,b){ if(!(b>0)) return ''; var d=(a-b)/b*100, r=Math.round(Math.abs(d)); return r===0?'<span class="ins-chip eq">0 %</span>':'<span class="ins-chip '+(d>0?'up':'dn')+'">'+(d>0?'▲ +':'▼ −')+r+' %</span>'; }
+  var VC=['linear-gradient(90deg,var(--accent),var(--c2))','linear-gradient(90deg,var(--c2),var(--ok))','linear-gradient(90deg,var(--ok),var(--warn))'];
+  function vstack(v){ var t=v.total>0?v.total:1, parts=[['Hébergement',v.h],['Train et avion',v.t],['Sur place',v.p]];
+    return '<div class="vstack" role="img" aria-label="'+parts.map(function(x){return x[0]+' '+Math.round(x[1]/t*100)+' %'}).join(', ')+'">'+parts.map(function(x,i){return '<i style="width:'+(Math.max(x[1],0)/t*100).toFixed(1)+'%;background:'+VC[i]+'"></i>'}).join('')+'</div>'+
+      '<div class="vleg">'+parts.map(function(x,i){return '<span><span class="vdot" style="background:'+VC[i]+'"></span>'+x[0]+' <b>'+eur(x[1])+'</b></span>'}).join('')+'</div>'; }
+  function vcmp(v){ return v.cur? (v.prevSame!=null?{ref:v.prevSame,txt:'Même période l’an dernier, au même jour : '+eur(v.prevSame)+'.'}:null) : (v.prev!=null?{ref:v.prev,txt:'Même période l’an dernier : '+eur(v.prev)+'.'}:null); }
+  function vacCard(){ var v=vacCur(); if(!v) return ''; var c=vcmp(v);
+    return '<button class="card vcard" data-vgo="'+esc(v.id)+'" aria-label="Vacances en cours, '+esc(v.n)+', '+Math.round(v.total)+' euros"><div class="row"><span class="badge ok">Vacances en cours</span><span class="muted" style="font-size:12px">jour '+v.day+' sur '+v.len+'</span></div>'+
+      '<div class="row"><h2 style="font-size:18px">'+esc(v.n)+'</h2><span class="muted" style="font-size:12px">'+esc(fmtDate(v.a))+' – '+esc(fmtDate(v.b))+'</span></div>'+
+      '<div class="row" style="align-items:center"><span style="font-size:26px;font-weight:700">'+eur(v.total)+'</span>'+(c?vpct(v.total,c.ref):'')+'</div>'+vstack(v)+(c?'<div class="muted" style="font-size:12px">'+c.txt+'</div>':'')+'</button>'; }
+  function vacScreen(){
+    var L=vacList(), v=L.filter(function(x){return x.id===S.vper})[0];
+    if(S.vper&&!v){ S.vper=null; S.vposte=null; }
+    if(!S.vper) return vacListScreen(L);
+    if(!S.vposte) return vacPeriodScreen(v);
+    return vacPosteScreen(v); }
+  function vacListScreen(L){
+    return '<button class="back" data-act="subclose">'+ico(I.back)+'Plus</button><h1 style="font-size:26px">Vacances</h1><p class="muted" style="font-size:13px;margin:-6px 0 0">Zone C · de la plus récente à la plus ancienne.</p>'+
+    (L.length? L.map(function(v){ var c=vcmp(v);
+      return '<button class="card vcard" data-vper="'+esc(v.id)+'" aria-label="'+esc(v.n)+', '+Math.round(v.total)+' euros"><div class="row"><h3 style="font-size:16px">'+esc(v.n)+(v.cur?' <span class="badge ok">en cours</span>':'')+'</h3><span class="muted" style="font-size:12px">'+esc(fmtDate(v.a))+' – '+esc(fmtDate(v.b))+'</span></div>'+
+        '<div class="row" style="align-items:center"><span style="font-size:24px;font-weight:700">'+eur(v.total)+'</span>'+(c?vpct(v.total,c.ref):'')+'</div>'+vstack(v)+
+        (v.early>0?'<div class="muted" style="font-size:12px">dont '+eur(v.early)+' payés avant le départ</div>':'')+'</button>'; }).join('')
+      : '<div class="card muted" style="text-align:center;padding:26px 16px">Aucune dépense de vacances trouvée dans les données.</div>')+
+    '<p class="note">Les réservations d’hébergement, de train, d’avion et d’agences payées dans les 120 jours avant le début d’une période, hors d’une autre période, lui sont rattachées. « Sur place » regroupe les dépenses variables pendant les dates (alimentation, loisirs, shopping, taxis, divers), hors crédit, impôts et abonnements. Dates : calendrier officiel zone C. Pour forcer des dates, une ligne dans Banque-regles.txt : @sejour ; Été 2026 ; 2026-07-04 ; 2026-09-01 (dernier jour inclus).</p>'; }
+  function vacPeriodScreen(v){
+    var mx=Math.max.apply(null,v.postes.map(function(x){return x.amt}).concat([1])), big=v.postes[0], rows=[];
+    var avgRows=[['Cette période',v.total,0]]; if(v.prev!=null) avgRows.push(['Même période, an dernier',v.prev,1]); if(v.avg!=null) avgRows.push(['Moyenne des '+esc(v.n.slice(0,-5).toLowerCase())+'s',v.avg,1]);
+    var m2=Math.max.apply(null,avgRows.map(function(r){return r[1]}).concat([1]));
+    var evo='<div class="ins-sec"><h3 class="ins-h">Évolution</h3>'+avgRows.map(function(r,i){ return '<div class="ins-row'+(i===0?' now':'')+'"><div class="ins-top"><span class="ins-nm">'+r[0]+'</span><span class="ins-v">'+eur(r[1])+(r[2]?' '+vpct(v.total,r[1]):'')+'</span></div><span class="ins-bar"><i style="width:'+(r[1]/m2*100).toFixed(1)+'%"></i></span></div>'; }).join('')+'</div>';
+    var facts=[]; if(big) facts.push(['Premier poste : '+esc(big.n),Math.round(big.amt/v.total*100)+' % de la période ('+eur(big.amt)+').']);
+    if(v.early>0) facts.push([eur(v.early)+' payés avant le départ',Math.round(v.early/v.total*100)+' % du total : réservations rattachées à cette période.']);
+    if(v.len>0&&v.total>0) facts.push([eur(v.total/v.day)+' par jour',v.cur?'en moyenne depuis le début, réservations comprises.':'en moyenne sur '+v.len+' jours, réservations comprises.']);
+    var fh='<div class="ins-sec"><h3 class="ins-h">À retenir</h3>'+facts.map(function(f){ return '<div class="ins-fact"><i></i><div><b>'+f[0]+'</b><span>'+f[1]+'</span></div></div>'; }).join('')+'</div>';
+    return '<button class="back" data-act="vback">'+ico(I.back)+'Vacances</button><div class="row"><h1 style="font-size:26px">'+esc(v.n)+'</h1>'+(v.cur?'<span class="badge ok">en cours</span>':'')+'</div>'+
+    '<div class="card"><div class="row" style="align-items:center"><span style="font-size:30px;font-weight:600">'+eur(v.total)+'</span>'+(vcmp(v)?vpct(v.total,vcmp(v).ref):'')+'</div><div class="muted" style="font-size:13px">'+esc(fmtDate(v.a))+' – '+esc(fmtDate(v.b))+' · '+v.len+' jours'+(v.cur?' (jour '+v.day+')':'')+'</div>'+vstack(v)+'</div>'+
+    '<h3 style="font-size:16px">Postes</h3><div class="card syn">'+(v.postes.length? v.postes.map(function(x){ return '<button class="prow" data-vposte="'+esc(x.n)+'" aria-label="'+esc(x.n)+' : '+Math.round(x.amt)+' euros"><span class="ptop"><span class="pnm">'+esc(x.n)+'</span><span class="psm">'+Math.round(x.amt/v.total*100)+' %</span><span class="pamt"><b>'+eur(x.amt)+'</b></span></span><span class="pvis dep"><i data-w="'+(x.amt/mx*100).toFixed(1)+'"></i></span>'+(x.early>0?'<span class="muted" style="display:block;font-size:11.5px;margin-top:3px">dont '+eur(x.early)+' réservés avant le départ</span>':'')+'</button>'; }).join('') : '<p class="muted" style="padding:12px 4px">Aucune dépense sur cette période.</p>')+
+      '<div class="gapl muted" style="margin-top:4px">Triés du plus dépensé au moins dépensé. Touchez un poste pour voir ses sous-postes et ses opérations.</div></div>'+
+    '<h3 style="font-size:16px">Insights</h3><div class="card ins">'+evo+fh+'</div>'; }
+  function vacPosteScreen(v){
+    var x=v.postes.filter(function(p){return p.n===S.vposte})[0]; if(!x){ S.vposte=null; return vacPeriodScreen(v); }
+    var mx=Math.max.apply(null,x.subs.map(function(s){return s.amt}).concat([1]));
+    return '<button class="back" data-act="vback">'+ico(I.back)+esc(v.n)+'</button><h1 style="font-size:26px">'+esc(x.n)+'</h1>'+
+    '<div class="card"><div class="row" style="align-items:center"><span style="font-size:30px;font-weight:600">'+eur(x.amt)+'</span><span class="badge ok">'+Math.round(x.amt/v.total*100)+' % de la période</span></div><div class="muted" style="font-size:13px">'+esc(v.n)+' · '+esc(fmtDate(v.a))+' – '+esc(fmtDate(v.b))+'</div></div>'+
+    '<h3 style="font-size:16px">Sous-postes</h3><div class="card syn">'+x.subs.map(function(s){ return '<div class="prow" style="cursor:default"><span class="ptop"><span class="pnm">'+esc(s.n)+'</span><span class="psm">'+Math.round(s.amt/x.amt*100)+' %</span><span class="pamt"><b>'+eur(s.amt)+'</b></span></span><span class="pvis dep"><i data-w="'+(Math.max(s.amt,0)/mx*100).toFixed(1)+'"></i></span></div>'; }).join('')+'</div>'+
+    '<h3 style="font-size:16px">Opérations</h3><div class="card" style="padding:4px 14px">'+opsList(x.ops.map(function(o){ return [o[0],o[1],x.n+(o[3]?' · réservé avant le départ':''),-o[2],0]; }))+'</div>'; }
   /* ---------- sources de revenus (graphique sur « Revenus ») ---------- */
   function revMode(){ return S.f.graph==='rev'&&!S.f.poste; }
   function revGroups(){ var P_=per(), ops=[]; P_.idxs.forEach(function(i){ ops=ops.concat((D.revOps&&D.revOps[D.keys[i]])||[]); });
@@ -301,7 +349,7 @@
     return header()+'<h1 style="font-size:26px">Opérations</h1><input type="search" id="q" placeholder="Rechercher un libellé ou une catégorie" aria-label="Rechercher une opération" value="'+esc(S.q)+'"><div class="card" style="padding:4px 14px" id="oplist">'+opsHtml(r,shown)+'</div>'; }
   function opsHtml(r,shown){ return r.length? opsList(shown)+(r.length>shown.length?'<p class="muted" style="font-size:12px;padding:10px 0">'+shown.length+' sur '+r.length+' opérations. Affinez la recherche pour voir les autres.</p>':'') : '<p class="muted" style="padding:16px 0">Aucune opération ne correspond à cette recherche.</p>'; }
   function plusScreen(){ var dark=S.theme==='dark', s=D.sync||{}, st=D.stats;
-    return '<h1 style="font-size:26px">Plus</h1>'+analyseTeaser()+'<div class="card" style="padding:4px 16px"><button class="switch" data-sub="rules" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.list)+'Règles de catégorisation</span><span class="muted">›</span></button><button class="switch" data-sub="bilan" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.chart)+'Bilan annuel</span><span class="muted">›</span></button><button class="switch" data-sub="epargne" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.pie)+'Épargne et Livret A</span><span class="muted">›</span></button></div><div class="card" style="padding:4px 16px"><div class="switch"><span>Masquer les montants</span><button class="tog" data-act="hide" aria-pressed="'+S.hide+'" aria-label="Masquer les montants"></button></div><div class="switch"><span>Thème sombre</span><button class="tog" data-act="theme" aria-pressed="'+dark+'" aria-label="Thème sombre"></button></div>'+(S.lockAvail?'<div class="switch"><span>Verrouiller avec l\'empreinte</span><button class="tog" data-act="lock" aria-pressed="'+Lock.enabled()+'" aria-label="Verrouiller avec l\'empreinte"></button></div>':'')+'</div>'+
+    return '<h1 style="font-size:26px">Plus</h1>'+analyseTeaser()+'<div class="card" style="padding:4px 16px"><button class="switch" data-sub="rules" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.list)+'Règles de catégorisation</span><span class="muted">›</span></button><button class="switch" data-sub="bilan" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.chart)+'Bilan annuel</span><span class="muted">›</span></button><button class="switch" data-sub="vacances" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.sun)+'Vacances</span><span class="muted">›</span></button><button class="switch" data-sub="epargne" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">'+ico(I.pie)+'Épargne et Livret A</span><span class="muted">›</span></button></div><div class="card" style="padding:4px 16px"><div class="switch"><span>Masquer les montants</span><button class="tog" data-act="hide" aria-pressed="'+S.hide+'" aria-label="Masquer les montants"></button></div><div class="switch"><span>Thème sombre</span><button class="tog" data-act="theme" aria-pressed="'+dark+'" aria-label="Thème sombre"></button></div>'+(S.lockAvail?'<div class="switch"><span>Verrouiller avec l\'empreinte</span><button class="tog" data-act="lock" aria-pressed="'+Lock.enabled()+'" aria-label="Verrouiller avec l\'empreinte"></button></div>':'')+'</div>'+
     '<div class="card" style="display:flex;flex-direction:column;gap:8px"><h3 style="font-size:15px">Vos données</h3>'+
       '<div class="muted" style="font-size:13px;line-height:1.5">Dernier export lu : <b style="color:var(--text)">'+esc(s.fileName||'inconnu')+'</b>'+(s.fileDate?' ('+esc(fmtDate(s.fileDate))+')':'')+'<br>'+st.rows+' opérations en mémoire, du '+esc(fmtDate(st.from))+' au '+esc(fmtDate(st.to))+'.'+(s.lastSync?'<br>Dernière synchronisation : '+esc(String(s.lastSync).replace('T',' à ')):'')+'<br>Les mouvements entre vos propres comptes ('+st.internal+') ne sont pas comptés dans les dépenses.</div>'+
       '<button class="fbtn" data-act="sync"'+(S.syncing?' disabled':'')+'>'+(S.syncing?'Lecture du dossier…':'Relire le dossier maintenant')+'</button>'+
@@ -591,7 +639,7 @@
     if(S.tab==='ops') return opsScreen();
     if(S.tab==='subs') return subsScreen();
     if(S.tab==='bud') return budScreen();
-    if(S.tab==='plus') return S.sub==='bilan'?bilanScreen():S.sub==='epargne'?epargneScreen():S.sub==='rules'?rulesScreen():S.sub==='analyse'?analyseScreen():plusScreen();
+    if(S.tab==='plus') return S.sub==='bilan'?bilanScreen():S.sub==='epargne'?epargneScreen():S.sub==='rules'?rulesScreen():S.sub==='analyse'?analyseScreen():S.sub==='vacances'?vacScreen():plusScreen();
     return S.open? detailScreen() : homeScreen();
   }
   function render(){
@@ -640,7 +688,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep],[data-rsel]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-gr],[data-ep],[data-rsel],[data-vper],[data-vposte],[data-vgo]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -671,11 +719,15 @@
     else if(el.dataset.act==='landtoggle'){S.landOpen=!S.landOpen;render()}
     else if(el.dataset.sub){S.sub=el.dataset.sub;render();window.scrollTo(0,0)}
     else if(el.dataset.bud){S.bud=S.bud===el.dataset.bud?null:el.dataset.bud;render()}
-    else if(el.dataset.act==='subclose'){S.sub=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.act==='subclose'){S.sub=null;S.vper=null;S.vposte=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='budsave'||el.dataset.act==='budreset'){ var inp=document.getElementById('budin'), v=el.dataset.act==='budreset'?0:Math.round(+(inp&&inp.value)); if(!(v>=0)) return; S.budBusy=true; render();
       authed('saveBudget',[el.dataset.p,v]).then(function(b){ D.budgets=b; S.budBusy=false; S.bud=null; render(); }).catch(function(err){ S.budBusy=false; S.error=errMsg(err); render(); }); }
     else if(el.dataset.gr){S.f.graph=el.dataset.gr;render()}
     else if(el.dataset.ep!==undefined){S.epOpen=(S.epOpen===+el.dataset.ep)?null:+el.dataset.ep;render()}
+    else if(el.dataset.vgo){S.tab='plus';S.sub='vacances';S.vper=el.dataset.vgo;S.vposte=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.vper){S.vper=el.dataset.vper;S.vposte=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.vposte){S.vposte=el.dataset.vposte;render();window.scrollTo(0,0)}
+    else if(el.dataset.act==='vback'){ if(S.vposte) S.vposte=null; else S.vper=null; render();window.scrollTo(0,0)}
     else if(el.dataset.rsel!==undefined){S.revSel=(S.revSel===el.dataset.rsel)?null:el.dataset.rsel;render()}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;render()}
     else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;render();window.scrollTo(0,0)}

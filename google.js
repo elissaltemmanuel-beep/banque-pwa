@@ -128,9 +128,9 @@
   /** Règles écrites dans le fichier « Banque-regles.txt » du Drive (une par ligne : texte ; poste ; sous-poste ; montant). */
   function readRulesFile() {
     return driveList("name='Banque-regles.txt' and trashed=false").then(function (f) {
-      if (!f.length) return { rules: [], fixes: [], info: 'absent' };
+      if (!f.length) return { rules: [], fixes: [], sejours: [], info: 'absent' };
       return call(DRIVE + '/files/' + f[0].id + '?alt=media').then(function (r) { return r.text(); }).then(function (txt) {
-        var out = [], fixes = [];
+        var out = [], fixes = [], sejours = [];
         txt.replace(/^\uFEFF/, '').split(/\r?\n/).forEach(function (line) {
           line = line.trim(); if (!line || line[0] === '#') return;
           var p = line.split(/\s*[;|\t]\s*/);
@@ -140,11 +140,15 @@
             if (fm > 0) fixes.push({ poste: p[1], sous: p[2] || '', montant: fm });
             return;
           }
+          if (p[0].toLowerCase() === '@sejour') {   // dates forcées d'une période de vacances : @sejour ; Été 2026 ; 2026-07-04 ; 2026-09-01 (dernier jour inclus)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(p[2] || '') && /^\d{4}-\d{2}-\d{2}$/.test(p[3] || '') && p[2] <= p[3]) sejours.push({ n: p[1], a: p[2], b: p[3] });
+            return;
+          }
           out.push({ motif: p[0], poste: p[1], sous: p[2] || '', montant: p[3] ? Number(String(p[3]).replace(',', '.').replace(/[^0-9.]/g, '')) || '' : '', fichier: true });
         });
-        return { rules: out, fixes: fixes, info: 'ok' };
+        return { rules: out, fixes: fixes, sejours: sejours, info: 'ok' };
       });
-    }).catch(function (e) { if (e.status === 401) throw e; return { rules: [], fixes: [], info: 'erreur : ' + (e.message || e) }; });
+    }).catch(function (e) { if (e.status === 401) throw e; return { rules: [], fixes: [], sejours: [], info: 'erreur : ' + (e.message || e) }; });
   }
   function readEpargne(id) {
     return readRange(id, 'Epargne!A2:N').then(function (v) {
@@ -251,7 +255,7 @@
         if (!rows.length) throw new Error(sync && sync.error ? sync.error : 'Aucune opération pour le moment. Déposez un export CSV dans le dossier d\'export.');
         return Promise.all([readRules(id), readRulesFile(), readEpargne(id)]).then(function (rr) {
           var rules = rr[0], fileRules = rr[1].rules, epRows = rr[2];
-          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(fileRules), exportDate: sync && sync.fileDate });
+          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(fileRules), exportDate: sync && sync.fileDate, sejours: rr[1].sejours || [] });
           data.sync = sync; data.rules = rules; data.fileRules = fileRules; data.fileRulesInfo = rr[1].info; data.fixes = rr[1].fixes || []; data.epargne = savingsSummary_(epRows, today());
           return readBudgets(id).then(function (b) { data.budgets = b; return data; });
         });

@@ -259,3 +259,12 @@ div.prow{cursor:default}
 .ins-rows{display:flex;flex-direction:column;gap:8px}
 .ins-rows .ins-bar i{background:linear-gradient(90deg,var(--g-ok-a),var(--g-ok-b))}
 .ins-rows .ins-row.neg .ins-bar i{background:var(--neu)}
+
+/* vacances */
+.vcard{display:flex;flex-direction:column;gap:10px;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.vcard:hover{background:var(--glass2)}
+.vstack{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--track);gap:2px}
+.vstack i{display:block;height:100%}
+.vleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted)}
+.vleg b{color:var(--text);font-variant-numeric:tabular-nums}
+.vdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
