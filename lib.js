@@ -545,12 +545,15 @@ function aggregate(rows, todayIso, opts) {
   cats.forEach(function (c) { catIdx[c.n] = c; });
 
   // opérations récentes (les plus récentes d'abord)
-  var opsAll = [];
+  var opsAll = [], subIdx = {};
+  cats.forEach(function (c) { c.subs.forEach(function (s) { s.ops = []; subIdx[c.n + '\u0001' + s.n] = s; }); });
   for (i = rows.length - 1; i >= 0; i--) {
     var r = rows[i], fut = r[0] > todayIso ? 1 : 0, row = [r[0], r[4] || r[2], r[6] || '', r[7], fut];
     if (opsAll.length < 600) opsAll.push(row);
     var c = catIdx[r[6] || 'Non catégorisé'];
     if (c && c.ops.length < 40) c.ops.push([r[0], r[4] || r[2], r[7], fut]);
+    var sb = subIdx[(r[6] || 'Non catégorisé') + '\u0001' + r[5]];
+    if (sb && sb.ops.length < 40) sb.ops.push([r[0], r[4] || r[2], r[7], fut]);
   }
 
   return {

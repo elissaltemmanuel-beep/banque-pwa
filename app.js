@@ -38,6 +38,7 @@
     ELAPSED=P_.cur? DAY/DAYS : 1;
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
     /* poste fixe : même montant (écart <= 8 %) chaque mois sur les 3 mois précédents. Renvoie ce montant, 0 sinon. */
+    function declared(poste,sous){ if(P_.isYear) return 0; var f=(D.fixes||[]).filter(function(x){return x.poste===poste&&(x.sous||'')===(sous||'')})[0]; return f?f.montant:0; }
     function fixedLevel(all){ if(!all||P_.isYear||!P_.idxs.length) return 0;
       var prior=all.slice(Math.max(0,first-3),first); if(prior.length<3) return 0;
       var mn=Math.min.apply(null,prior), mx=Math.max.apply(null,prior), mean=sum(prior)/prior.length;
@@ -47,8 +48,8 @@
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc!=='incl'?c.exc:null);
-      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,fixed:fixedLevel(c.all),
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:fixedLevel(s.all)}; })}; }); }
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,fixed:declared(c.n,'')||fixedLevel(c.all),
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:declared(c.n,s.n)||fixedLevel(s.all),ops:s.ops||[]}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function expd(c){ return c.fixed? c.fixed : c.avg*ELAPSED; }
@@ -90,7 +91,7 @@
   function bar2(c){ var s=status(c), e=expd(c), d=c.spent-e, w=Math.min(Math.abs(d)/((c.fixed||c.avg)*0.5),1)*50, pos=d>=0;
     return '<div class="bar" role="img" aria-label="'+aria(c,'Écart au rythme attendu : '+Math.round(d)+' euros')+'"><i class="'+s.k+'" style="'+(pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i><b style="left:50%"></b></div><div class="gapl muted"><span class="'+s.k+'t">'+(pos?'+':'−')+eur(Math.abs(d))+'</span> par rapport au rythme attendu ('+eur(e)+')</div>'; }
   function compactCard(list,sub){
-    var ecarts=S.view==='ecarts', T=sub?'div':'button';
+    var ecarts=S.view==='ecarts', T='button';
     var cats, extra=0;
     if(sub) cats=srt(list,ecarts);
     else { var pool=applyF(list), keep=pool;
@@ -107,7 +108,7 @@
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
       return '<span class="pvis dep"><i data-w="'+(Math.max(x.c.spent,0)/mx*100).toFixed(1)+'"></i></span>'; }
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
-    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+upn(x)+'</span><span class="psm">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
+    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' data-ssel="'+esc(x.c.n)+'" aria-pressed="'+(S.subSel===x.c.n)+'"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+upn(x)+'</span><span class="psm">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
     var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Un poste au même montant chaque mois est comparé à ce montant. Les 8 postes les plus importants sont affichés.' : 'Triés du plus dépensé au moins dépensé. Le pourcentage est la part du poste dans le total des dépenses.';
     return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+
       (ecarts?'<p class="gapl muted" style="text-align:center;margin:2px 0 4px">À gauche : sous la moyenne · à droite : au-dessus</p>':'')+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
@@ -235,7 +236,8 @@
     return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h2 style="font-size:22px">'+esc(c.n)+'</h2><span class="badge '+s.k+'">'+s.t+'</span></div>'+
     '<div class="card"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+
     '<h3 style="font-size:16px">Sous-postes</h3>'+compactCard(c.subs,true)+
-    '<h3 style="font-size:16px">Opérations</h3><div class="card" style="padding:4px 14px">'+opsList(c.ops.slice(0,20).map(function(o){return [o[0],o[1],c.n,o[2],o[3]]}))+(c.ops.length?'':'<p class="muted" style="padding:14px 0">Aucune opération.</p>')+'</div>'; }
+    (function(){ var sb=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, src=sb?sb.ops:c.ops, lbl=sb?sb.n:c.n;
+      return '<div class="row"><h3 style="font-size:16px">Opérations'+(sb?' · '+esc(sb.n):'')+'</h3>'+(sb?'<button class="back" data-ssel="'+esc(sb.n)+'" style="min-height:32px;font-size:12.5px">Voir tout le poste</button>':'')+'</div><div class="card" style="padding:4px 14px">'+opsList(src.slice(0,20).map(function(o){return [o[0],o[1],lbl,o[2],o[3]]}))+(src.length?'':'<p class="muted" style="padding:14px 0">Aucune opération'+(sb?' récente pour ce sous-poste.':'.')+'</p>')+'</div>'; })(); }
   function opsScreen(){ var q=S.q.toLowerCase(), r=D.ops.filter(function(o){return !q||(o[1]+' '+o[2]).toLowerCase().indexOf(q)>-1}), shown=r.slice(0,150);
     return header()+'<h1 style="font-size:26px">Opérations</h1><input type="search" id="q" placeholder="Rechercher un libellé ou une catégorie" aria-label="Rechercher une opération" value="'+esc(S.q)+'"><div class="card" style="padding:4px 14px" id="oplist">'+opsHtml(r,shown)+'</div>'; }
   function opsHtml(r,shown){ return r.length? opsList(shown)+(r.length>shown.length?'<p class="muted" style="font-size:12px;padding:10px 0">'+shown.length+' sur '+r.length+' opérations. Affinez la recherche pour voir les autres.</p>':'') : '<p class="muted" style="padding:16px 0">Aucune opération ne correspond à cette recherche.</p>'; }
@@ -549,7 +551,7 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-per],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel]'); if(!el||el.disabled) return;
     if(el.dataset.per){S.per=el.dataset.per;savePrefs();render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
@@ -583,11 +585,12 @@
     else if(el.dataset.act==='subclose'){S.sub=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='budsave'||el.dataset.act==='budreset'){ var inp=document.getElementById('budin'), v=el.dataset.act==='budreset'?0:Math.round(+(inp&&inp.value)); if(!(v>=0)) return; S.budBusy=true; render();
       authed('saveBudget',[el.dataset.p,v]).then(function(b){ D.budgets=b; S.budBusy=false; S.bud=null; render(); }).catch(function(err){ S.budBusy=false; S.error=errMsg(err); render(); }); }
-    else if(el.dataset.open){S.open=el.dataset.open;render();window.scrollTo(0,0)}
+    else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;render()}
+    else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}
     else if(el.dataset.act==='hide'){S.hide=!S.hide;savePrefs();render()}
     else if(el.dataset.act==='allpostes'){S.all=!S.all;render()}
-    else if(el.dataset.act==='close'){S.open=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.act==='close'){S.open=null;S.subSel=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
     else if(el.dataset.act==='retry'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='unlock'){doUnlock()}
