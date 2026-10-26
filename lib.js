@@ -252,7 +252,7 @@ function aggregate(rows, todayIso, opts) {
   var nAll = Math.min(48, (y - +firstK.slice(0, 4)) * 12 + (m - +firstK.slice(5, 7)) + 1), allKeys = [];
   for (i = nAll - 1; i >= 0; i--) allKeys.push(shiftMonth_(cur, -i));
 
-  var spend = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
+  var spend = {}, spendTD = {}, subSpend = {}, dep = {}, rev = {}, lastBal = {}, dailyBal = {};
   var depDay = {}, revDay = {};
   var yr = {}, ytdCut = todayIso.slice(5);
   var upcP = {}, upcS = {}, sav = {}, revExc = {}, excM = {};
@@ -299,6 +299,7 @@ function aggregate(rows, todayIso, opts) {
     } else {
       depV = -amt;
       bump(spend, par, mk, -amt);
+      if (dd <= day) bump(spendTD, par, mk, -amt);
       if (!subSpend[par]) subSpend[par] = {};
       bump(subSpend[par], cat, mk, -amt);
       if (date > win90 && amt < 0 && /^CARTE/i.test(r[2])) card90 += -amt;
@@ -538,7 +539,7 @@ function aggregate(rows, todayIso, opts) {
       };
     }).filter(function (x) { return x.spent || x.hist.some(function (v) { return v; }); })
       .sort(function (a, b) { return b.spent - a.spent; });
-    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), upc: round2_(upcP[par] || 0), exc: allKeys.map(function (k) { return round2_((excP[par] && excP[par][k]) || 0); }), subs: subs, ops: [] });
+    cats.push({ id: slug_(par), n: par, spent: s, hist: h, all: allKeys.map(function (k) { return round2_(spend[par][k] || 0); }), td: allKeys.map(function (k) { return round2_((spendTD[par] && spendTD[par][k]) || 0); }), upc: round2_(upcP[par] || 0), exc: allKeys.map(function (k) { return round2_((excP[par] && excP[par][k]) || 0); }), subs: subs, ops: [] });
   });
   cats.sort(function (a, b) { return b.spent - a.spent; });
   var catIdx = {};

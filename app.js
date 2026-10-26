@@ -51,7 +51,7 @@
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc!=='incl'?c.exc:null);
-      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,upc:c.upc||0,avgm:r.avgm,fixed:declared(c.n,'')||fixedLevel(c.all),
+      return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,td:c.td,upc:c.upc||0,avgm:r.avgm,fixed:declared(c.n,'')||fixedLevel(c.all),
       subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:declared(c.n,s.n)||fixedLevel(s.all),ops:s.ops||[]}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
@@ -235,10 +235,51 @@
     return '<button class="back" data-act="clearposte" style="min-height:36px">'+ico(I.back)+esc(c.n)+' · retirer le filtre</button>'+compactCard(list,true);
   }
   function opsList(arr){ return arr.map(function(o){ return '<div class="opline"><div class="l"><span style="font-weight:600;font-size:14px">'+esc(o[1])+'</span><span class="muted" style="font-size:12px">'+esc(fmtDate(o[0]))+(o[4]?' · à venir':'')+' · '+esc(o[2])+'</span></div><span class="amt '+(o[3]>0?'pos':'')+'" style="font-weight:600">'+(S.hide?'••••':(o[3]>0?'+':'')+eur(o[3],true))+'</span></div>'; }).join(''); }
+
+  /* ---------- Insights d'un poste ---------- */
+  /* repères : HCSF (taux d'effort max d'un crédit immobilier, en % des revenus) et Insee, enquête Budget de famille 2017 (part de chaque poste dans la consommation des ménages) */
+  var REPERES={
+    'Logement':{kind:'salaire',v:35,src:'HCSF',nom:'taux d’effort maximal d’un crédit immobilier'},
+    'Alimentation':{kind:'dep',v:16.1,src:'Insee',nom:'part de l’alimentation dans la consommation des ménages'},
+    'Loisirs et sorties':{kind:'dep',v:16.6,src:'Insee',nom:'part des loisirs, de la culture, de la restauration et des hôtels'},
+    'Transports et voyages':{kind:'dep',v:16.4,src:'Insee',nom:'part des transports'},
+    'Shopping et équipement':{kind:'dep',v:10.7,src:'Insee',nom:'part de l’habillement et de l’équipement du logement'},
+    'Abonnements et télécoms':{kind:'dep',v:2.7,src:'Insee',nom:'part des communications'},
+    'Santé':{kind:'dep',v:1.8,src:'Insee',nom:'part de la santé, après remboursements'} };
+  function insightsCard(c){
+    var P_=per(); if(P_.isYear||!P_.idxs.length) return '';
+    var idx=P_.idxs[0], all=c.all||[], td=P_.cur&&c.td?c.td:all, tot=sum(CATS.map(function(x){return x.spent>0?x.spent:0}));
+    function pctTxt(a,b){ if(!(b>0)) return null; var d=(a-b)/b*100, r=Math.round(Math.abs(d)); if(r===0) return {t:'0 %',k:'eq'}; return {t:(d>0?'▲ +':'▼ −')+r+' %',k:d>0?'up':'dn'}; }
+    var now=td[idx]||0, rows=[], mx=Math.max(now,1);
+    var label=MOIS_L[+P_.mo-1], yy=+P_.y;
+    function addRow(nm,sub,v){ if(v==null) return; rows.push({nm:nm,sub:sub,v:v,p:pctTxt(now,v)}); mx=Math.max(mx,v); }
+    var cmpSub=P_.cur?'même période':'mois entier';
+    if(idx>=1) addRow('Mois dernier',cmpSub,td[idx-1]||0);
+    if(idx>=12) addRow(label.charAt(0).toUpperCase()+label.slice(1)+' '+(yy-1),cmpSub,td[idx-12]||0);
+    var prior=all.slice(Math.max(0,idx-12),idx); if(prior.length>=3) addRow('Moyenne '+prior.length+' mois','mois entiers',sum(prior)/prior.length);
+    var evo='<div class="ins-sec"><h3 class="ins-h">Évolution</h3><div class="muted" style="font-size:11.5px">Le pourcentage est l’écart de '+(P_.cur?'ce mois-ci':'ce mois')+' par rapport à chaque période.</div>'+
+      '<div class="ins-row now"><div class="ins-top"><span class="ins-nm">'+(P_.cur?'Ce mois-ci':'Ce mois')+' <small>'+(P_.cur?'du 1er au '+DAY:'mois entier')+'</small></span><span class="ins-v">'+eur(now)+'</span></div><span class="ins-bar"><i style="width:'+(now/mx*100).toFixed(1)+'%"></i></span></div>'+
+      rows.map(function(r){ return '<div class="ins-row"><div class="ins-top"><span class="ins-nm">'+esc(r.nm)+' <small>'+r.sub+'</small></span><span class="ins-v">'+eur(r.v)+(r.p?' <span class="ins-chip '+r.p.k+'">'+r.p.t+'</span>':'')+'</span></div><span class="ins-bar"><i style="width:'+(r.v/mx*100).toFixed(1)+'%"></i></span></div>'; }).join('')+'</div>';
+    var sal=D.kpi&&D.kpi.salary>0?D.kpi.salary:0, full=c.spent, sh=sal>0?full/sal*100:null, ds=tot>0?full/tot*100:null, rep=REPERES[c.n], poids='';
+    if(rep&&((rep.kind==='salaire'&&sh!=null)||(rep.kind==='dep'&&ds!=null))){
+      var val=rep.kind==='salaire'?sh:ds, over=val>rep.v+(rep.kind==='dep'?1.5:0), near=rep.kind==='dep'&&Math.abs(val-rep.v)<=1.5, sc=Math.max(rep.v*1.5,val*1.15), diff=Math.round(Math.abs(val-rep.v));
+      var pill=near?'<span class="ins-pill neu">proche de la moyenne</span>':'<span class="ins-pill '+(over?'bad':'ok')+'">'+diff+' point'+(diff>1?'s':'')+(rep.kind==='salaire'?(over?' au-dessus du repère':' sous le repère'):(over?' au-dessus de la moyenne':' en dessous de la moyenne'))+'</span>';
+      poids='<div class="ins-sec"><h3 class="ins-h">Poids dans le budget</h3>'+pill+'<div class="ins-gauge'+(over?' over':'')+'"><i style="width:'+Math.min(val/sc*100,100).toFixed(1)+'%"></i><b style="left:'+(rep.v/sc*100).toFixed(1)+'%"></b><em style="left:'+(rep.v/sc*100).toFixed(1)+'%">'+(rep.kind==='salaire'?'repère':'moyenne')+' '+String(rep.v).replace('.',',')+' %</em></div>'+
+        '<div class="muted" style="font-size:12.5px;line-height:1.4">'+(rep.kind==='salaire'?Math.round(val)+' % de votre salaire net ('+eur(sal)+').':Math.round(val)+' % de vos dépenses du mois'+(sh!=null?', soit '+Math.round(sh)+' % de votre salaire net.':'.'))+' Repère : '+rep.nom+' ('+rep.src+') : '+String(rep.v).replace('.',',')+' %'+(rep.kind==='salaire'?' des revenus.':' des dépenses.')+'</div></div>';
+    } else if(sh!=null&&full>0){ poids='<div class="ins-sec"><h3 class="ins-h">Poids dans le budget</h3><div class="muted" style="font-size:12.5px;line-height:1.4">'+Math.round(sh)+' % de votre salaire net ('+eur(sal)+')'+(ds!=null?', '+Math.round(ds)+' % de vos dépenses du mois.':'.')+'</div></div>'; }
+    var facts=[];
+    if(c.fixed){ var run=0; for(var i=idx-1;i>=0;i--){ if(Math.abs((all[i]||0)-c.fixed)<=c.fixed*0.08) run++; else break; } facts.push(['Montant fixe : '+eur(c.fixed),run>=2?'Même montant depuis '+run+' mois.':'Même montant ces derniers mois.']); }
+    var sameMonth=(c.ops||[]).filter(function(o){return String(o[0]).slice(0,7)===P_.key&&o[2]<0}).sort(function(a,b){return a[2]-b[2]})[0];
+    if(sameMonth) facts.push(['Plus grosse opération : '+eur(-sameMonth[2]),(esc(sameMonth[1])+', le '+esc(fmtDate(sameMonth[0]))+'.').replace(/\.\.$/,'.')]);
+    if(idx>=12&&now>0){ var dly=now-(td[idx-12]||0); if(Math.abs(dly)>=1) facts.push([(dly>0?'+':'−')+eur(Math.abs(dly))+' sur un an',label.charAt(0).toUpperCase()+label.slice(1)+' '+(yy-1)+' : '+eur(td[idx-12]||0)+(P_.cur?' à la même date.':'.')]); }
+    var top=(c.subs||[]).slice().sort(function(a,b){return b.spent-a.spent})[0];
+    if(top&&top.spent>0&&c.spent>0&&c.subs.length>1) facts.push(['Premier sous-poste : '+esc(top.n),Math.round(top.spent/c.spent*100)+' % du poste ('+eur(top.spent)+').']);
+    var fh=facts.length?'<div class="ins-sec"><h3 class="ins-h">À retenir</h3>'+facts.slice(0,3).map(function(f){ return '<div class="ins-fact"><i></i><div><b>'+f[0]+'</b><span>'+f[1]+'</span></div></div>'; }).join('')+'</div>':'';
+    return '<h3 style="font-size:16px">Insights</h3><div class="card ins">'+evo+poids+fh+'</div>'; }
   function detailScreen(){ var c=CATS.filter(function(x){return x.id===S.open})[0]; if(!c){ S.open=null; return homeScreen(); } var s=status(c), tot=sum(CATS.map(function(x){return x.spent>0?x.spent:0})), share=tot>0&&c.spent>0? '<div style="text-align:right;line-height:1.15;flex:none"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+Math.round(c.spent/tot*100)+' %</div><div class="muted" style="font-size:11.5px">des dépenses</div></div>' : '';
     return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h2 style="font-size:22px">'+esc(c.n)+'</h2><span class="badge '+s.k+'">'+s.t+'</span></div>'+
     '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+
-    '<h3 style="font-size:16px">Sous-postes</h3>'+compactCard(c.subs,true)+
+    insightsCard(c)+'<h3 style="font-size:16px">Sous-postes</h3>'+compactCard(c.subs,true)+
     (function(){ var sb=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, src=sb?sb.ops:c.ops, lbl=sb?sb.n:c.n;
       return '<div class="row"><h3 style="font-size:16px">Opérations'+(sb?' · '+esc(sb.n):'')+'</h3>'+(sb?'<button class="back" data-ssel="'+esc(sb.n)+'" style="min-height:32px;font-size:12.5px">Voir tout le poste</button>':'')+'</div><div class="card" style="padding:4px 14px">'+opsList(src.slice(0,20).map(function(o){return [o[0],o[1],lbl,o[2],o[3]]}))+(src.length?'':'<p class="muted" style="padding:14px 0">Aucune opération'+(sb?' récente pour ce sous-poste.':'.')+'</p>')+'</div>'; })(); }
   function opsScreen(){ var q=S.q.toLowerCase(), r=D.ops.filter(function(o){return !q||(o[1]+' '+o[2]).toLowerCase().indexOf(q)>-1}), shown=r.slice(0,150);
