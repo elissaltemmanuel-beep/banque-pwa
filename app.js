@@ -37,12 +37,15 @@
   function buildCats(){ var k=+S.f.moy, P_=per(), first=P_.idxs.length?P_.idxs[0]:0;
     ELAPSED=P_.cur? DAY/DAYS : 1;
     var monthsN=P_.isYear? (P_.curYear? Math.max(P_.idxs.length-1,0)+DAY/DAYS : Math.max(P_.idxs.length,1)) : 1;
-    /* poste fixe : même montant (écart <= 8 %) chaque mois sur les 3 mois précédents. Renvoie ce montant, 0 sinon. */
     function declared(poste,sous){ if(P_.isYear) return 0; var f=(D.fixes||[]).filter(function(x){return x.poste===poste&&(x.sous||'')===(sous||'')})[0]; return f?f.montant:0; }
+    /* poste fixe : (1) même montant (écart <= 8 %) sur les 3 mois précédents, ou (2) au moins 4 des 6 mois précédents au même montant (à 5 % près).
+       Renvoie ce montant, 0 sinon. */
     function fixedLevel(all){ if(!all||P_.isYear||!P_.idxs.length) return 0;
-      var prior=all.slice(Math.max(0,first-3),first); if(prior.length<3) return 0;
-      var mn=Math.min.apply(null,prior), mx=Math.max.apply(null,prior), mean=sum(prior)/prior.length;
-      return (mn>0&&mean>0&&(mx-mn)/mean<=0.08)? mean : 0; }
+      var p3=all.slice(Math.max(0,first-3),first);
+      if(p3.length>=3){ var mn=Math.min.apply(null,p3), mx=Math.max.apply(null,p3), mean=sum(p3)/p3.length; if(mn>0&&mean>0&&(mx-mn)/mean<=0.08) return mean; }
+      var p6=all.slice(Math.max(0,first-6),first); if(p6.length<6) return 0;
+      var best=0, lvl=0; p6.forEach(function(v){ if(v<=0) return; var same=p6.filter(function(x){return Math.abs(x-v)<=v*0.05}); if(same.length>best){ best=same.length; lvl=sum(same)/same.length; } });
+      return best>=4? lvl : 0; }
     function calc(all,hist,spentNow,exc){
       if(!all||!P_.idxs.length) return {spent:spentNow,avg:Math.max(avgOf(hist,k),1),avgm:avgOf(hist,k)};
       var spent=sum(P_.idxs.map(function(i){return all[i]||0})), pos=function(v){return Math.max(v,0)}, lo=Math.max(0,first-k), net=function(v,i){return pos(v-(exc?(exc[i]||0):0))}, prior=all.slice(lo,first).map(function(v,i){return net(v,lo+i)}), am=prior.length? sum(prior)/prior.length : sum(all.map(net))/Math.max(all.length,1);
