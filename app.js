@@ -422,7 +422,7 @@
     var fh=facts.length?'<div class="ins-sec"><h3 class="ins-h">À retenir</h3>'+facts.slice(0,3).map(function(f){ return '<div class="ins-fact"><i></i><div><b>'+f[0]+'</b><span>'+f[1]+'</span></div></div>'; }).join('')+'</div>':'';
     return '<h3 style="font-size:16px">Insights'+(sb?' · '+esc(sb.n):'')+'</h3><div class="card ins">'+evo+poids+fh+'</div>'; }
   /* insights d'un marchand : dernier niveau après poste et sous-poste */
-  function merchantCard(){ var key=S.merch; if(!key) return ''; var P_=per(); if(P_.isYear) return '';
+  function merchantCard(){ var key=S.merch; if(!key) return ''; var P_=per(); if(P_.isYear){ var tk=D.today.month; P_={isYear:false,cur:true,key:tk,y:tk.slice(0,4),mo:tk.slice(5,7)}; }
     var ks=(D.keys||[]), idx=ks.indexOf(P_.key); if(idx<0) return '';
     var lim=P_.cur?DAY:31, by={}, n=0, last=null, big=null;
     (D.ops||[]).forEach(function(o){ if(o[3]>=0||o[4]||cleanLabel(o[1])!==key) return; var m=o[0].slice(0,7), d=+o[0].slice(8,10); (by[m]=by[m]||{td:0,all:0}).all+=-o[3]; if(d<=lim) by[m].td+=-o[3]; n++; if(!last||o[0]>last[0]) last=o; if(!big||o[3]<big[3]) big=o; });
@@ -441,7 +441,7 @@
     if(big) facts.push(['Plus grosse : '+eur(-big[3],true),'Le '+fmtDate(big[0])+'.']);
     if(last) facts.push(['Dernière : '+eur(-last[3],true),'Le '+fmtDate(last[0])+'.']);
     var fh='<div class="ins-sec"><h3 class="ins-h">À retenir</h3>'+facts.map(function(f){ return '<div class="ins-fact"><i></i><div><b>'+f[0]+'</b><span>'+f[1]+'</span></div></div>'; }).join('')+'</div>';
-    return '<div class="row"><h3 style="font-size:16px">Insights · '+esc(key)+'</h3><button class="back" data-msel="'+esc(key)+'" style="min-height:32px;font-size:12.5px">Fermer</button></div><div class="card">'+chartInner(fake)+'</div><div class="card ins">'+evo+(n?fh:'')+'</div>'; }
+    return '<div class="mcard row" style="scroll-margin-top:12px"><h3 style="font-size:16px">Insights · '+esc(key)+'</h3><button class="back" data-msel="'+esc(key)+'" style="min-height:32px;font-size:12.5px">Fermer</button></div><div class="card">'+chartInner(fake)+'</div><div class="card ins">'+evo+(n?fh:'')+'</div>'; }
   function detailScreen(){ var c=CATS.filter(function(x){return x.id===S.open})[0]; if(!c){ S.open=null; return homeScreen(); } var sbSel=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, s=status(c), tot=sum(CATS.map(function(x){return x.spent>0?x.spent:0})), share=tot>0&&c.spent>0? '<div style="text-align:right;line-height:1.15;flex:none"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+Math.round(c.spent/tot*100)+' %</div><div class="muted" style="font-size:11.5px">des dépenses</div></div>' : '';
     return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h2 style="font-size:22px">'+esc(c.n)+'</h2><span class="badge '+s.k+'">'+s.t+'</span></div>'+
     '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+'<div class="card">'+chartInner(c,sbSel)+'</div>'+(sbSel?'':'<div class="card list"><button class="switch" data-act="insp" aria-expanded="'+!!S.insP+'" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span>Insights du poste</span><span class="muted">'+(S.insP?'⌃':'⌄')+'</span></button></div>'+(S.insP?insightsCard(c):''))+
@@ -837,7 +837,7 @@
     else if(el.dataset.vposte){S.vposte=el.dataset.vposte;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='vback'){ if(S.vposte) S.vposte=null; else S.vper=null; render();window.scrollTo(0,0)}
     else if(el.dataset.rsel!==undefined){S.revSel=(S.revSel===el.dataset.rsel)?null:el.dataset.rsel;render()}
-    else if(el.dataset.msel!==undefined){S.merch=(S.merch===el.dataset.msel)?null:el.dataset.msel;render()}
+    else if(el.dataset.msel!==undefined){S.merch=(S.merch===el.dataset.msel)?null:el.dataset.msel;render();if(S.merch){ var mc=document.querySelector('.mcard'); if(mc) mc.scrollIntoView({block:'start'}); }}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;S.merch=null;render()}
     else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;S.insP=false;S.merch=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}
