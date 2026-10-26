@@ -329,3 +329,5 @@ button.ktile{cursor:pointer}
 .psm.pct{font-size:13px;font-weight:700;color:var(--text)}
 /* pastilles de variation : elles passent à la ligne au lieu de déborder de leur case */
 .kcard .kchip{max-width:100%;flex-wrap:wrap;white-space:normal;font-size:12px;padding:2px 8px;row-gap:0}
+.kcard .kchip b{font-weight:800}.kcard .kchip small{font-size:11px;font-weight:500;opacity:.9;margin-left:2px}
+.kcard .kchip{flex-wrap:nowrap;white-space:nowrap;gap:3px;padding:2px 7px;font-size:12px}.kcard .kchip small{font-size:10.5px;margin-left:1px}

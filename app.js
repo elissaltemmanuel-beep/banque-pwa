@@ -187,8 +187,11 @@
       '<div class="row" style="font-size:14px;padding:8px 0 0;border-top:1px solid var(--rim-soft);margin-top:4px"><b>Atterrissage</b><b style="color:var(--accent)">'+eur(L.value)+'</b></div>'+
       '<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Les dépenses courantes sont la moyenne de vos paiements par carte sur 90 jours. Si l\'export est ancien, les opérations faites depuis ne sont pas comptées.</p></div>'; }
   /* ---------- carte KPI de l'accueil : solde, atterrissage et dépenses du mois en cours ---------- */
-  function kchip(d,p,goodUp){ if(d==null) return ''; var up=d>=0, good=goodUp?up:!up, r=Math.round(Math.abs(p||0));
-    return '<span class="kchip '+(Math.abs(d)<1?'eq':good?'good':'bad')+'">'+(Math.abs(d)<1?'=':(up?'▲ +':'▼ −')+eur(Math.abs(d)))+(p!=null&&r>0&&Math.abs(d)>=1?' <small>('+(up?'+':'−')+r+' %)</small>':'')+'</span>'; }
+  function kchip(d,p,goodUp){ if(d==null) return ''; var up=d>=0, good=goodUp?up:!up, r=Math.round(Math.abs(p||0)), cls=Math.abs(d)<1?'eq':good?'good':'bad';
+    if(Math.abs(d)<1) return '<span class="kchip eq">=</span>';
+    var arrow=up?'▲':'▼', sg=up?'+':'−', hasP=p!=null&&r>0;
+    /* le pourcentage d'abord, en gras, puis le montant en plus petit et en poids normal */
+    return '<span class="kchip '+cls+'">'+arrow+' '+(hasP?'<b>'+sg+r+' %</b><small>'+sg+eur(Math.abs(d))+'</small>':'<b>'+sg+eur(Math.abs(d))+'</b>')+'</span>'; }
   function kpiCard(){
     var L=D.proj&&D.proj.landing, open=!!S.landOpen&&!!L, cc=D.curve||{}, pk=prevKey(D.today.month,-1), pm=D.daily&&D.daily[pk], mp=MOIS_C[+pk.slice(5,7)-1];
     function balOn(day){ if(!pm||!pm.b||day<1) return null; for(var i=Math.min(day,pm.b.length)-1;i>=0;i--) if(pm.b[i]!=null) return pm.b[i]; return null; }
