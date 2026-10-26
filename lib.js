@@ -583,6 +583,7 @@ function aggregate(rows, todayIso, opts) {
     ops: opsAll,
     revOps: revOps,
     vac: vacances_(rows, todayIso, opts.sejours),
+    rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,
@@ -664,6 +665,44 @@ function vacances_(rows, todayIso, sejours) {
       avg: same.length ? round2_(same.reduce(function (a, b) { return a + b; }, 0) / same.length) : null, postes: postes };
   }).filter(function (p) { return p.total > 0 || p.cur; });
   return res.reverse();
+}
+
+
+// ----------------------------------------------------------------- rapport d'analyse
+
+/** Découvert année par année (solde de fin de journée reporté les jours sans opération), puis équilibre courant sur les 12 derniers mois complets. */
+function rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur) {
+  var days = Object.keys(dailyBal).sort(), out = { decouvert: { years: [], lastNeg: null, min: null, lastNegDays: null }, eq: null };
+  if (days.length) {
+    var d = days[0], bal = dailyBal[d], by = {}, last = null, mn = null, guard = 0;
+    while (d <= todayIso && guard++ < 4000) {
+      if (dailyBal[d] != null) bal = dailyBal[d];
+      var y = d.slice(0, 4), Y = by[y] || (by[y] = { y: y, days: 0, n: 0, sum: 0, min: bal });
+      Y.n++; Y.sum += bal; if (bal < Y.min) Y.min = bal; if (bal < 0) { Y.days++; last = d; }
+      if (mn == null || bal < mn.v) mn = { d: d, v: bal };
+      d = addDays_(d, 1);
+    }
+    out.decouvert.years = Object.keys(by).sort().map(function (k) { var Y = by[k]; return { y: Y.y, days: Y.days, min: round2_(Y.min), mean: round2_(Y.sum / Y.n), n: Y.n }; });
+    out.decouvert.lastNeg = last; out.decouvert.min = mn ? { d: mn.d, v: round2_(mn.v) } : null;
+    out.decouvert.lastNegDays = last ? daysBetween_(last, todayIso) : null;
+    out.decouvert.totalDays = out.decouvert.years.reduce(function (s, Y) { return s + Y.days; }, 0);
+  }
+  var done = seriesAll.filter(function (x) { return x.k < cur; }).slice(-12);
+  if (done.length) {
+    var rec = 0, dep = 0, rexc = 0, dexc = 0, months = [], deficits = [];
+    done.forEach(function (x) {
+      var r = x.rev - x.revExc, dd = x.dep - x.exc, net = r - dd;
+      rec += r; dep += dd; rexc += x.revExc; dexc += x.exc;
+      months.push({ k: x.k, rev: round2_(r), revExc: round2_(x.revExc), dep: round2_(dd), exc: round2_(x.exc), net: round2_(net) });
+      if (net < 0) deficits.push({ k: x.k, v: round2_(net) });
+    });
+    var n = done.length, margin = rec - dep;
+    out.eq = { n: n, from: done[0].k, to: done[n - 1].k, rev: round2_(rec), dep: round2_(dep), margin: round2_(margin), taux: rec > 0 ? round2_(margin / rec * 100) : null,
+      revExc: round2_(rexc), exc: round2_(dexc), net: round2_(margin + rexc - dexc), tauxNet: (rec + rexc) > 0 ? round2_((margin + rexc - dexc) / (rec + rexc) * 100) : null,
+      months: months, deficits: deficits, avgRev: round2_(rec / n), avgDep: round2_(dep / n),
+      treso: dep > 0 && solde > 0 ? round2_(solde / (dep / n)) : null, fixed: kpi.fixed, rest: kpi.rest, effort: kpi.effort };
+  }
+  return out;
 }
 
 if (typeof module !== 'undefined') {
