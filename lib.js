@@ -74,6 +74,10 @@ function slug_(s) {
  */
 function toStorageRows(table) {
   if (!table || table.length < 2) throw new Error('Le fichier CSV est vide.');
+  // certains exports (anciens) n'ont pas la colonne « Tags » : on la réinsère à vide
+  if (table[0].length === 12 && !/tag/i.test(String(table[0][3] || ''))) {
+    table = table.map(function (r) { if (r && r.length >= 12) { r = r.slice(); r.splice(3, 0, ''); } return r; });
+  }
   var head = String(table[0][0] || '').replace(/^﻿/, '').toLowerCase();
   if (head.indexOf('date') !== 0 || table[0].length < 13) {
     throw new Error('Format de fichier inattendu : ce n\'est pas un export d\'opérations BoursoBank.');
