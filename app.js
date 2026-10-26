@@ -106,7 +106,7 @@
     var items=cats.map(info), body;
     var tot=sum(list.map(function(c){return c.spent>0?c.spent:0})), mx=Math.max.apply(null,items.map(function(x){return x.c.spent}).concat([1]));
     function small(x){ return ecarts? (x.c.fixed?'fixe ':'attendu ')+'<b>'+eur(x.e)+'</b>' : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
-    function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>') : '<b>'+eur(x.c.spent)+'</b>'; }
+    function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>'+(x.e>0?' <small class="'+x.k+'t" style="font-size:11.5px;font-weight:600">('+(x.pos?'+':'−')+Math.round(Math.abs(x.d)/x.e*100)+' %)</small>':'')) : '<b>'+eur(x.c.spent)+'</b>'; }
     function vis(x){
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
       return '<span class="pvis dep"><i data-w="'+(Math.max(x.c.spent,0)/mx*100).toFixed(1)+'"></i></span>'; }
