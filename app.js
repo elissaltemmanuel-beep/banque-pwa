@@ -204,17 +204,6 @@
 
   /* ---------- écrans ---------- */
   function syncNote(){ var s=D.sync; if(s&&s.error) return '<div class="card muted" style="font-size:13px;line-height:1.45"><b style="color:var(--text)">Lecture du dernier export impossible</b><br>'+esc(s.error)+'<br>Les chiffres viennent des opérations déjà importées.</div>'; return ''; }
-  function landingCard(){
-    var L=D.proj.landing, lab, sub;
-    if(!L){ lab='Solde projeté au '+fmtDate(D.today.month+'-'+(DAYS<10?'0':'')+DAYS); sub='Paie non repérée dans l’historique.'; return landingHtml(lab,sub,D.proj.value); }
-    lab='Atterrissage avant la paie';
-    if(L.exportAge>1) sub='Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.';
-    else if(L.days<=0) sub='Paie attendue d’un jour à l’autre.';
-    else sub='Au '+fmtDate(L.date)+', veille de la paie '+(L.payKnown?'programmée le '+fmtDate(L.payDate):'estimée au '+fmtDate(L.payDate)+(L.payMin!==L.payMax?' (versée entre le '+L.payMin+' et le '+L.payMax+' ces derniers mois)':''))+'.';
-    return landingHtml(lab,sub.replace(/\.\.+$/,'.'),L.value);
-  }
-  function landingHtml(lab,sub,v){ var L=D.proj.landing, open=!!S.landOpen&&!!L;
-    return '<div class="card" style="padding:0;overflow:hidden"><button data-act="landtoggle" aria-expanded="'+open+'" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;width:100%;border:0;background:transparent;text-align:left;color:inherit;font-family:inherit;cursor:pointer"><div style="min-width:0"><div class="muted" style="font-size:13px">'+esc(lab)+'</div><div class="muted" style="font-size:11.5px;line-height:1.35;margin-top:2px">'+esc(sub)+'</div></div><span style="font-size:20px;font-weight:600;color:var(--accent);white-space:nowrap">'+eur(v)+'</span></button>'+(open?landDetail(L):'')+'</div>'; }
   function landDetail(L){ function r(l,v,cls){ return '<div class="row" style="font-size:13px;padding:5px 0"><span class="muted">'+l+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+v+'</b></div>'; }
     return '<div style="border-top:1px solid var(--rim-soft);padding:8px 16px 14px">'+
       r('Solde actuel',eur(D.solde))+
@@ -223,9 +212,40 @@
       r('Dépenses courantes estimées ('+L.days+' j × '+eur(L.perDay)+')','−'+eur(L.spend),'badt')+
       '<div class="row" style="font-size:14px;padding:8px 0 0;border-top:1px solid var(--rim-soft);margin-top:4px"><b>Atterrissage</b><b style="color:var(--accent)">'+eur(L.value)+'</b></div>'+
       '<p class="muted" style="font-size:11.5px;line-height:1.4;margin-top:8px">Les dépenses courantes sont la moyenne de vos paiements par carte sur 90 jours. Si l\'export est ancien, les opérations faites depuis ne sont pas comptées.</p></div>'; }
+  /* ---------- carte KPI de l'accueil : solde, atterrissage et dépenses du mois en cours ---------- */
+  function kchip(d,p,goodUp){ if(d==null) return ''; var up=d>=0, good=goodUp?up:!up, r=Math.round(Math.abs(p||0));
+    return '<span class="kchip '+(Math.abs(d)<1?'eq':good?'good':'bad')+'">'+(Math.abs(d)<1?'=':(up?'▲ +':'▼ −')+eur(Math.abs(d)))+(p!=null&&r>0&&Math.abs(d)>=1?' <small>('+(up?'+':'−')+r+' %)</small>':'')+'</span>'; }
+  function kspark(L){
+    var W=340,H=70,P=6, m=D.daily&&D.daily[D.today.month], b=m&&m.b?m.b.slice(0,DAY):null; if(!b) return '';
+    var last=null; b=b.map(function(v){ if(v==null) v=last; else last=v; return v; }).filter(function(v){return v!=null}); if(b.length<2) return '';
+    var proj=(L&&L.days>0)?[D.solde,L.value]:null, total=Math.max(DAYS,DAY+(proj?L.days:0))-1;
+    var all=b.concat(proj||[]), mn=Math.min.apply(null,all), mx=Math.max.apply(null,all), pad=(mx-mn)*.12||1; mn-=pad; mx+=pad;
+    function X(k){return P+k/total*(W-2*P)} function Y(v){return H-P-(v-mn)/(mx-mn)*(H-2*P)}
+    var d=b.map(function(v,k){return (k?'L':'M')+X(k).toFixed(1)+' '+Y(v).toFixed(1)}).join(' '), x1=X(b.length-1), area=d+' L'+x1.toFixed(1)+' '+(H-P)+' L'+X(0).toFixed(1)+' '+(H-P)+' Z';
+    var zero=mn<0&&mx>0?'<line x1="'+P+'" x2="'+(W-P)+'" y1="'+Y(0).toFixed(1)+'" y2="'+Y(0).toFixed(1)+'" stroke="var(--rim)" stroke-dasharray="2 4"/>':'';
+    var xe=X(Math.min(total,b.length-1+(proj?L.days:0)));
+    var pj=proj?'<path d="M'+x1.toFixed(1)+' '+Y(proj[0]).toFixed(1)+' L'+xe.toFixed(1)+' '+Y(proj[1]).toFixed(1)+'" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/><circle cx="'+xe.toFixed(1)+'" cy="'+Y(proj[1]).toFixed(1)+'" r="4.5" fill="var(--bg)" stroke="var(--warn)" stroke-width="2"/>':'';
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;overflow:visible" role="img" aria-label="Solde du mois en cours, jour par jour'+(proj?', avec projection jusqu’à la veille de la paie':'')+'"><defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".3"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'+zero+'<path d="'+area+'" fill="url(#kg)"/><path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'+pj+'<circle cx="'+x1.toFixed(1)+'" cy="'+Y(b[b.length-1]).toFixed(1)+'" r="4.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"/></svg>'; }
+  function kpiCard(){
+    var L=D.proj&&D.proj.landing, km=D.kmonth||{}, open=!!S.landOpen&&!!L, mp=km.prevKey?MOIS_C[+km.prevKey.slice(5,7)-1]:'', cc=D.curve||{};
+    var head='<div class="row"><span class="muted" style="font-size:13.5px">'+(D.soldeEstime?'Solde estimé':'Solde BoursoBank')+'</span></div>';
+    var d0=km.prevSame!=null?D.solde-km.prevSame:null, p0=km.prevSame?d0/Math.abs(km.prevSame)*100:null;
+    var left='<div class="ktile"><span class="muted" style="font-size:12.5px">Aujourd’hui</span><span class="kv" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</span>'+(d0!=null?kchip(d0,p0,true)+'<span class="note">face au '+DAY+' '+mp+'</span>':'')+'</div>';
+    var right;
+    if(L){ var dl=km.prevLanding!=null?L.value-km.prevLanding:null, pl=km.prevLanding?dl/Math.abs(km.prevLanding)*100:null;
+      right='<button class="ktile" data-act="landtoggle" aria-expanded="'+open+'"><span class="muted" style="font-size:12.5px">Au '+esc(fmtDate(L.date))+'</span><span class="kv" style="color:var(--warn)">'+eur(L.value)+'</span>'+(dl!=null?kchip(dl,pl,true)+'<span class="note">face à '+mp+'</span>':'<span class="note">veille de la paie</span>')+'</button>'; }
+    else right='<div class="ktile"><span class="muted" style="font-size:12.5px">Fin de mois</span><span class="kv" style="color:var(--warn)">'+eur(D.proj.value)+'</span><span class="note">paie non repérée</span></div>';
+    var sub=L&&L.exportAge>1?'Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.':(L&&L.days<=0?'Paie attendue d’un jour à l’autre.':(L?'Atterrissage : veille de la paie '+(L.payKnown?'programmée le '+fmtDate(L.payDate):'estimée au '+fmtDate(L.payDate))+'.':''));
+    sub=sub.replace(/\.\.+$/,'.'); var legend=L?'<div class="klegend"><span><i></i>Solde du mois</span><span><i class="d"></i>Jusqu’à la veille de paie</span></div>':'';
+    var dep='', nowD=(cc.depCum||[])[DAY-1], hab=(cc.habit||[])[DAY-1], pm=km.prevKey&&D.daily&&D.daily[km.prevKey], prevD=pm&&pm.d?pm.d.slice(0,DAY).reduce(function(a,x){return a+x},0):null;
+    if(nowD>0){ var dp=prevD!=null?nowD-prevD:null, da=hab>0?nowD-hab:null;
+      dep='<div class="ksep"></div><div class="ksec"><span class="muted" style="font-size:13px">Dépenses de '+esc(MOIS_L[+D.today.month.slice(5,7)-1])+', au '+DAY+'</span><span class="kdep">'+eur(nowD)+'</span>'+
+        '<div class="kcmp">'+(dp!=null?'<div><span class="muted">Mois dernier</span><b>'+eur(prevD)+'</b>'+kchip(dp,prevD>0?dp/prevD*100:null,false)+'</div>':'')+(da!=null?'<div><span class="muted">Moyenne</span><b>'+eur(hab)+'</b>'+kchip(da,da/hab*100,false)+'</div>':'')+'</div>'+
+        '<div class="note">Exceptionnelles comprises, mouvements entre comptes exclus. La moyenne est celle des 12 derniers mois, au même jour du mois.</div></div>'; }
+    return '<div class="card kcard">'+head+'<div class="ktiles">'+left+right+'</div>'+(open?landDetail(L):'')+kspark(L)+legend+(sub?'<div class="note">'+esc(sub)+'</div>':'')+dep+'</div>'; }
   function homeScreen(){
-    return header()+syncNote()+'<div><div class="muted" style="font-size:14px">'+(D.soldeEstime?'Solde estimé (export du '+esc(fmtDate(D.proj.landing?D.proj.landing.exportDate:D.stats.lastRealDate))+')':'Solde BoursoBank')+'</div><div class="balance" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div></div>'+
-    landingCard()+chartCard()+(revMode()?revSection():
+    return header()+syncNote()+kpiCard()+
+    chartCard()+(revMode()?revSection():
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
   }
   /* évolution par poste : du 1er janvier à aujourd'hui, face à la même date l'an dernier */

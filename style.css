@@ -305,3 +305,19 @@ div.prow{cursor:default}
 .rev-r b{font-variant-numeric:tabular-nums;white-space:nowrap}
 .rpts{display:flex;flex-direction:column}.rpt{padding:10px 0;border-bottom:1px solid var(--rim-soft);display:grid;grid-template-columns:1fr auto;gap:2px 10px}.rpt:last-child{border:0}
 .rpt-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;grid-column:1/-1}.rpt-t{font-size:13px;color:var(--muted);line-height:1.4;min-width:0;overflow-wrap:anywhere}.rpt-a{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* carte KPI de l'accueil */
+.kcard{display:flex;flex-direction:column;gap:12px;text-align:left}
+.kcard .note{text-align:left;margin:0;font-size:12px;line-height:1.45}
+.kcard .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ktiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ktile{background:var(--glass2);border:1px solid var(--rim-soft);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0;text-align:left;color:inherit;font:inherit}
+button.ktile{cursor:pointer}
+.kv{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kchip{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;border-radius:99px;padding:2px 9px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.kchip small{font-size:11px;font-weight:600;opacity:.85}.kchip.good{color:var(--ok);background:var(--ok-bg)}.kchip.bad{color:var(--bad);background:var(--bad-bg)}.kchip.eq{color:var(--muted);background:var(--track)}
+.klegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted)}.klegend span{display:inline-flex;align-items:center;gap:5px}.klegend i{display:inline-block;width:14px;height:0;border-top:2px solid var(--accent)}.klegend i.d{border-top-style:dashed;border-color:var(--warn)}
+.ksep{height:1px;background:var(--rim-soft)}
+.ksec{display:flex;flex-direction:column;gap:9px}.kdep{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kcmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}.kcmp>div{background:var(--glass2);border:1px solid var(--rim-soft);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;min-width:0}.kcmp span.muted{font-size:11.5px;white-space:nowrap}.kcmp b{font-variant-numeric:tabular-nums}
+@media (max-width:360px){.ktiles,.kcmp{grid-template-columns:1fr}}
