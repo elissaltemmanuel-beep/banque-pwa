@@ -4,8 +4,8 @@
   var S={margin:500,tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
   function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12',exc:'excl'}; }
   S.f=fcopy();
-  try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view2) S.view=pr.view2; if(pr.per) S.per=pr.per; if(pr.margin!=null) S.margin=+pr.margin; }catch(e){}
-  function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view2:S.view,per:S.per,margin:S.margin})); }catch(e){} }
+  try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.hide) S.hide=true; if(pr.view3) S.view=pr.view3; if(pr.per) S.per=pr.per; if(pr.margin!=null) S.margin=+pr.margin; }catch(e){}
+  function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view3:S.view,per:S.per,margin:S.margin})); }catch(e){} }
   document.documentElement.setAttribute('data-theme',S.theme);
   var app=document.getElementById('app');
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -85,18 +85,20 @@
       cats=srt(keep,ecarts); }
     function info(c){ var s=status(c), pct=c.spent/c.avg*100, gap=(c.spent/c.avg-ELAPSED)*100, d=c.spent-c.avg*ELAPSED; return {c:c,s:s,k:s.k,pct:pct,gap:gap,d:d,pos:gap>=0}; }
     function lab(x){ return esc(x.c.n)+' : '+(ecarts?((x.pos?'+':'−')+Math.round(Math.abs(x.d))+' euros par rapport au rythme attendu'):(Math.round(x.c.spent)+' euros, '+Math.round(x.pct)+' % de la moyenne de '+Math.round(x.c.avg)+' euros'))+', '+x.s.t; }
-    function up(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="white-space:nowrap">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
-    function val(x){ return ecarts? '<span class="sval"><b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>'+up(x)+'</span>' : '<span class="sval"><b>'+eur(x.c.spent)+'</b><small class="muted">'+Math.round(x.pct)+' %</small>'+up(x)+'</span>'; }
-    function track(x){ var w;
-      if(ecarts){ w=Math.min(Math.abs(x.gap)/45,1)*50; return '<span class="strack"><span class="axis"></span><i class="'+x.k+'" style="'+(x.pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i></span>'; }
-      return '<span class="strack"><i class="'+x.k+'" style="left:0" data-w="'+(Math.min(x.pct,130)/130*100)+'"></i><span class="tick" style="left:'+(100/130*100)+'%"></span></span>'; }
+    function upn(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="display:block;font-size:10.5px;font-weight:500;line-height:1.2">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
     var items=cats.map(info), body;
+    var tot=sum(list.map(function(c){return c.spent>0?c.spent:0})), mx=Math.max.apply(null,items.map(function(x){return x.c.spent}).concat([1]));
+    function small(x){ return ecarts? 'attendu '+eur(x.c.avg*ELAPSED) : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
+    function amt(x){ return ecarts? '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>' : '<b>'+eur(x.c.spent)+'</b>'; }
+    function vis(x){
+      if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
+      return '<span class="pvis dep"><i data-w="'+(Math.max(x.c.spent,0)/mx*100).toFixed(1)+'"></i></span>'; }
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
-    else body=items.map(function(x){ return '<'+T+' class="srow'+(ecarts?'':' tall')+'"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="sname">'+esc(x.c.n)+'<small class="muted" style="display:flex;align-items:center;white-space:nowrap;font-size:10.5px;font-weight:500">'+spark(x.c.all)+'moy. '+eur(x.c.avgm||0)+'</small></span>'+track(x)+val(x)+'</'+T+'>'; }).join('');
-    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Le repère marque 100 % de la moyenne du poste. Triés du plus dépensé au moins dépensé.';
-    return '<div class="card syn">'+'<div class="seg" role="group" aria-label="Type de graphique"><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button></div>'+
-      '<p class="gapl muted" style="text-align:center;margin:4px 0">'+(ecarts?'Rythme attendu au centre · à gauche en retard · à droite en avance':'Montant dépensé et % de la moyenne du poste')+'</p>'+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
-      '<div class="gapl muted" style="margin-top:6px">'+cap+'</div></div>'; }
+    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' role="group"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+upn(x)+'</span><span class="psm">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
+    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Les 8 postes les plus importants sont affichés.' : 'Triés du plus dépensé au moins dépensé. Le pourcentage est la part du poste dans le total des dépenses.';
+    return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+
+      (ecarts?'<p class="gapl muted" style="text-align:center;margin:2px 0 4px">À gauche : sous la moyenne · à droite : au-dessus</p>':'')+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
+      '<div class="gapl muted" style="margin-top:4px">'+cap+'</div></div>'; }
 
   /* ---------- graphique de l'accueil ---------- */
   function niceCeil(v){ var step=v>12000?5000:v>6000?2000:v>2500?1000:v>1000?500:100; return Math.max(step,Math.ceil(v*1.08/step)*step); }
@@ -487,7 +489,7 @@
   function render(){
     if(D) CATS=buildCats();
     app.innerHTML='<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="screen fade" id="screen">'+screen()+'</div>'+(S.stage==='ready'?'<nav class="nav" aria-label="Navigation principale">'+TABS.map(function(x){return '<button data-tab="'+x[0]+'"'+(x[0]===S.tab?' aria-current="page"':'')+'>'+ico(x[2])+x[1]+'</button>'}).join('')+'</nav>':'');
-    requestAnimationFrame(function(){requestAnimationFrame(function(){ app.querySelectorAll('.bar i,.strack i').forEach(function(el){el.style.width=el.dataset.w+'%'}); }); });
+    requestAnimationFrame(function(){requestAnimationFrame(function(){ app.querySelectorAll('.bar i,.strack i,.pvis i').forEach(function(el){el.style.width=el.dataset.w+'%'}); }); });
     var b=document.getElementById('bal'); if(b&&D&&!reduce&&!S.hide&&S.first){ var t0=performance.now(); (function tick(n){var k=Math.min((n-t0)/900,1),e=1-Math.pow(1-k,3);b.textContent=eur(D.solde*e);if(k<1)requestAnimationFrame(tick)})(t0); }
     if(D) S.first=false;
     paintPanel();
