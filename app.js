@@ -425,8 +425,9 @@
   /* insights d'un marchand : dernier niveau après poste et sous-poste */
   function merchantCard(){ var key=S.merch; if(!key) return ''; var P_=per(); if(P_.isYear){ var tk=D.today.month; P_={isYear:false,cur:true,key:tk,y:tk.slice(0,4),mo:tk.slice(5,7)}; }
     var ks=(D.keys||[]), idx=ks.indexOf(P_.key); if(idx<0) return '';
-    var lim=P_.cur?DAY:31, by={}, n=0, last=null, big=null;
-    (D.ops||[]).forEach(function(o){ if(o[3]>=0||o[4]||cleanLabel(o[1])!==key) return; var m=o[0].slice(0,7), d=+o[0].slice(8,10); (by[m]=by[m]||{td:0,all:0}).all+=-o[3]; if(d<=lim) by[m].td+=-o[3]; n++; if(!last||o[0]>last[0]) last=o; if(!big||o[3]<big[3]) big=o; });
+    var lim=P_.cur?DAY:31, by={}, n=0, last=null, big=null, M=D.merch&&D.merch[key];
+    if(M){ n=M[0]; last=[M[1],'',-M[2]]; big=[M[3],'',-M[4]]; Object.keys(M[5]).forEach(function(m){ by[m]={all:M[5][m][0],td:M[5][m][1]}; }); }
+    else (D.ops||[]).forEach(function(o){ if(o[3]>=0||o[4]||cleanLabel(o[1])!==key) return; var m=o[0].slice(0,7), d=+o[0].slice(8,10); (by[m]=by[m]||{td:0,all:0}).all+=-o[3]; if(d<=lim) by[m].td+=-o[3]; n++; if(!last||o[0]>last[0]) last=o; if(!big||o[3]<big[3]) big=o; });
     var td=P_.cur, g=function(m){ var x=by[m]; return x?(td?x.td:x.all):0; }, now=g(P_.key), rows=[], mx=Math.max(now,1);
     function pctTxt(a,b){ if(!(b>0)) return null; var d=(a-b)/b*100, r=Math.round(Math.abs(d)); if(r===0) return {t:'0 %',k:'eq'}; return {t:(d>0?'▲ +':'▼ −')+r+' %',k:d>0?'up':'dn'}; }
     function add(nm,sub,v){ rows.push({nm:nm,sub:sub,v:v,p:pctTxt(now,v)}); mx=Math.max(mx,v); }

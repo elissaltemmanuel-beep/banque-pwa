@@ -548,6 +548,17 @@ function aggregate(rows, todayIso, opts) {
   var catIdx = {};
   cats.forEach(function (c) { catIdx[c.n] = c; });
 
+  // historique par marchand (toutes les opérations, pas seulement les 600 dernières) : [nb, dernière date, dernier montant, plus grosse date, plus gros montant, {mois: [total, total au même jour du mois]}]
+  var merch = {}, dayNow = +todayIso.slice(8, 10);
+  rows.forEach(function (r) {
+    if (!(r[7] < 0) || r[0] > todayIso || r[6] === 'Mouvements internes') return;
+    var k = String(r[4] || r[2] || '').replace(/^(CARTE|PRLV|VIR|SEPA|PAIEMENT)\s+/gi, '').replace(/\s+/g, ' ').trim();
+    if (!k) return;
+    var m = merch[k] || (merch[k] = [0, '', 0, '', 0, {}]), mo = r[0].slice(0, 7), x = m[5][mo] || (m[5][mo] = [0, 0]), amt = -r[7];
+    m[0]++; if (r[0] >= m[1]) { m[1] = r[0]; m[2] = round2_(amt); } if (amt > m[4]) { m[3] = r[0]; m[4] = round2_(amt); }
+    x[0] = round2_(x[0] + amt); if (+r[0].slice(8, 10) <= dayNow) x[1] = round2_(x[1] + amt);
+  });
+
   // opérations récentes (les plus récentes d'abord)
   var opsAll = [], subIdx = {};
   cats.forEach(function (c) { c.subs.forEach(function (s) { s.ops = []; subIdx[c.n + '\u0001' + s.n] = s; }); });
@@ -581,6 +592,7 @@ function aggregate(rows, todayIso, opts) {
     kpi: kpi, forecast: forecast, excOps: excOps.slice(0, 8), dups: dups, merchants: merchants,
     bilan: bilan_(yr, y),
     ops: opsAll,
+    merch: merch,
     revOps: revOps,
     vac: vacances_(rows, todayIso, opts.sejours),
     rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
