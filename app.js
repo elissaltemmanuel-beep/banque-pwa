@@ -120,6 +120,7 @@
   /* ---------- graphique de l'accueil ---------- */
   function niceCeil(v){ var step=v>12000?5000:v>6000?2000:v>2500?1000:v>1000?500:100; return Math.max(step,Math.ceil(v*1.08/step)*step); }
   function maxOf(a){ return a.reduce(function(m,v){return v>m?v:m},0); }
+  var KCMP='';
   function chartInner(po,so){
     var PR=per(), P=D.proj, C=D.curve, G=150, B=170, N=30, gr=S.f.graph, svg='', sum_='', leg='', badge='', aria='', title=PR.label;
     var poste=po||(S.f.poste?CATS.filter(function(c){return c.id===S.f.poste})[0]:null), sous=so||(!po&&poste&&S.f.sous?poste.subs.filter(function(s){return s.n===S.f.sous})[0]:null);
@@ -171,7 +172,7 @@
     }
     sum_=sum_.replace(/\.{2,}/g,'.');
     return '<div class="kchart">'+(poste?'<div class="row"><h3 style="font-size:14px">'+esc(title)+'</h3>'+badge+'</div>':'')+
-      (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+
+      (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+(poste?'':KCMP)+
       '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
       ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 204" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>')+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div>'; }
@@ -215,7 +216,7 @@
     if(lv){ var tot=D.solde+lv.solde+(lv.enc||0), ref=km.prevSame!=null?km.prevSame+(lv.solde-sav):null;
       strip='<div class="kstrip"><span class="kl"><span class="muted">Total liquide</span><b>'+eur(tot,true)+'</b></span>'+(ref!=null?kchip(tot-ref,ref?(tot-ref)/Math.abs(ref)*100:null,true):'')+'</div>'; }
     var sub=L&&L.exportAge>1?'Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.':'';
-    var dep='', P_=per(), sk=P_.key, gm=S.f.graph||'solde', Dd=D.daily||{}, nDay=P_.cur?DAY:99;
+    KCMP=''; var dep='', P_=per(), sk=P_.key, gm=S.f.graph||'solde', Dd=D.daily||{}, nDay=P_.cur?DAY:99;
     var mname=MOIS_L[+P_.mo-1], when=P_.cur?mname+', au '+DAY:mname+' '+P_.y;
     function cum(k,f){ var x=Dd[k]&&Dd[k][f]; return x?x.slice(0,nDay).reduce(function(a,v){return a+v},0):null; }
     function bal(k){ var x=Dd[k]&&Dd[k].b; if(!x) return null; for(var i=Math.min(nDay,x.length)-1;i>=0;i--) if(x[i]!=null) return x[i]; return null; }
@@ -224,10 +225,11 @@
     if(P_.cur&&gm==='dep'&&(cc.habit||[])[DAY-1]>0) avg=cc.habit[DAY-1];
     var ttl=(gm==='solde'?'Solde de ':gm==='rev'?'Revenus de ':'Dépenses de ')+when, goodUp=gm!=='dep';
     if(cur0!=null&&(gm==='solde'||cur0>0)){ var dp=prv!=null?cur0-prv:null, da=avg!=null?cur0-avg:null;
-      dep='<div class="ksep"></div><div class="ksec"><span class="muted" style="font-size:13px">'+esc(ttl)+'</span><span class="kdep">'+eur(cur0)+'</span>'+
+      dep='<div class="ksec">'+(gm==='solde'?'':'<span class="muted" style="font-size:13px">'+esc(ttl)+'</span><span class="kdep">'+eur(cur0)+'</span>')+
         '<div class="kcmp">'+(dp!=null?'<div><span class="muted">Mois dernier</span><b>'+eur(prv)+'</b>'+kchip(dp,prv?dp/Math.abs(prv)*100:null,goodUp)+'</div>':'')+(da!=null?'<div><span class="muted">Moyenne</span><b>'+eur(avg)+'</b>'+kchip(da,avg?da/Math.abs(avg)*100:null,goodUp)+'</div>':'')+'</div>'+
         '<div class="note">'+(gm==='solde'?'Solde du compte courant':gm==='rev'?'Revenus, exceptionnels compris':'Exceptionnelles comprises')+', mouvements entre comptes exclus. '+(P_.cur?'Comparé au même jour du mois ; la moyenne porte sur les 12 derniers mois.':'La moyenne porte sur les 12 mois précédents.')+'</div></div>'; }
-    return '<div class="kwrap"><div class="ktiles">'+left+right+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+strip+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'<div class="ksep"></div>'+chartInner()+dep+'</div>'; }
+    KCMP=dep;
+    return '<div class="kwrap"><div class="ktiles">'+left+right+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+strip+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'<div class="ksep"></div>'+chartInner()+'</div>'; }
   function homeScreen(){
     return header()+syncNote()+kpiCard()+
     (revMode()?revSection():
