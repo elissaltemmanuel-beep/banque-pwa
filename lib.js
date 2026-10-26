@@ -584,6 +584,7 @@ function aggregate(rows, todayIso, opts) {
     revOps: revOps,
     vac: vacances_(rows, todayIso, opts.sejours),
     rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
+    roll: roll_(rows, todayIso, dailyBal, seriesAll, cur),
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,
@@ -702,6 +703,34 @@ function rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur) {
       months: months, deficits: deficits, avgRev: round2_(rec / n), avgDep: round2_(dep / n),
       treso: dep > 0 && solde > 0 ? round2_(solde / (dep / n)) : null, fixed: kpi.fixed, rest: kpi.rest, effort: kpi.effort };
   }
+  return out;
+}
+
+
+// ----------------------------------------------------------------- carte KPI de l'accueil (périodes glissantes)
+
+/** Pour 30 jours, 3 mois et 12 mois glissants : solde d'il y a N jours, dépenses de la période, de la période précédente, moyenne, et les 3 postes les plus lourds. */
+function roll_(rows, todayIso, dailyBal, seriesAll, cur) {
+  var dates = Object.keys(dailyBal).sort();
+  function balAt(iso) {
+    if (!dates.length || iso < dates[0]) return null;
+    var lo = 0, hi = dates.length - 1;
+    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (dates[mid] <= iso) lo = mid; else hi = mid - 1; }
+    return round2_(dailyBal[dates[lo]]);
+  }
+  var done = seriesAll.filter(function (x) { return x.k < cur; }).slice(-12), depSum = done.reduce(function (s, x) { return s + x.dep; }, 0), daySum = done.reduce(function (s, x) { return s + daysInMonth_(+x.k.slice(0, 4), +x.k.slice(5, 7)); }, 0);
+  var out = {};
+  [30, 90, 365].forEach(function (n) {
+    var from = addDays_(todayIso, -n), fromPrev = addDays_(todayIso, -2 * n), dep = 0, prev = 0, by = {}, byPrev = {};
+    rows.forEach(function (r) {
+      var d = r[0], par = r[6] || 'Non catégorisé', cat = r[5] || '';
+      if (d > todayIso || d <= fromPrev || INCOME_PARENTS.indexOf(par) > -1 || INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) return;
+      if (d > from) { dep -= r[7]; by[par] = (by[par] || 0) - r[7]; } else { prev -= r[7]; byPrev[par] = (byPrev[par] || 0) - r[7]; }
+    });
+    var top = Object.keys(by).map(function (k) { return { n: k, amt: round2_(by[k]), prev: round2_(byPrev[k] || 0) }; }).filter(function (x) { return x.amt > 0; }).sort(function (a, b) { return b.amt - a.amt; }).slice(0, 3);
+    var hasPrev = dates.length && fromPrev >= dates[0];
+    out[n] = { bal0: balAt(from), dep: round2_(dep), prev: hasPrev ? round2_(prev) : null, avg: daySum ? round2_(depSum / daySum * n) : null, top: top };
+  });
   return out;
 }
 
