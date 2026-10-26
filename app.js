@@ -442,7 +442,7 @@
     return '<div class="row"><h3 style="font-size:16px">Insights · '+esc(key)+'</h3><button class="back" data-msel="'+esc(key)+'" style="min-height:32px;font-size:12.5px">Fermer</button></div><div class="card">'+chartInner(fake)+'</div><div class="card ins">'+evo+(n?fh:'')+'</div>'; }
   function detailScreen(){ var c=CATS.filter(function(x){return x.id===S.open})[0]; if(!c){ S.open=null; return homeScreen(); } var sbSel=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, s=status(c), tot=sum(CATS.map(function(x){return x.spent>0?x.spent:0})), share=tot>0&&c.spent>0? '<div style="text-align:right;line-height:1.15;flex:none"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+Math.round(c.spent/tot*100)+' %</div><div class="muted" style="font-size:11.5px">des dépenses</div></div>' : '';
     return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h2 style="font-size:22px">'+esc(c.n)+'</h2><span class="badge '+s.k+'">'+s.t+'</span></div>'+
-    '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+'<div class="card">'+chartInner(c,sbSel)+'</div>'+
+    '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+'<div class="card">'+chartInner(c,sbSel)+'</div>'+(sbSel?'':'<div class="card list"><button class="switch" data-act="insp" aria-expanded="'+!!S.insP+'" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span>Insights du poste</span><span class="muted">'+(S.insP?'⌃':'⌄')+'</span></button></div>'+(S.insP?insightsCard(c):''))+
     '<h3 style="font-size:16px">Sous-postes</h3>'+compactCard(c.subs,true)+(sbSel?insightsCard(c,sbSel):'')+merchantCard()+
     (function(){ var sb=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, src=sb?sb.ops:c.ops, lbl=sb?sb.n:c.n;
       return '<div class="row"><h3 style="font-size:16px">Opérations'+(sb?' · '+esc(sb.n):'')+'</h3>'+(sb?'<button class="back" data-ssel="'+esc(sb.n)+'" style="min-height:32px;font-size:12.5px">Voir tout le poste</button>':'')+'</div><div class="card" style="padding:4px 14px">'+opsList(src.slice(0,20).map(function(o){return [o[0],o[1],lbl,o[2],o[3]]}),true)+(src.length?'':'<p class="muted" style="padding:14px 0">Aucune opération'+(sb?' récente pour ce sous-poste.':'.')+'</p>')+'</div>'; })(); }
@@ -837,11 +837,12 @@
     else if(el.dataset.rsel!==undefined){S.revSel=(S.revSel===el.dataset.rsel)?null:el.dataset.rsel;render()}
     else if(el.dataset.msel!==undefined){S.merch=(S.merch===el.dataset.msel)?null:el.dataset.msel;render()}
     else if(el.dataset.ssel!==undefined){S.subSel=(S.subSel===el.dataset.ssel)?null:el.dataset.ssel;S.merch=null;render()}
-    else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;S.merch=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.open){S.open=el.dataset.open;S.subSel=null;S.insP=false;S.merch=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}
     else if(el.dataset.act==='hide'){S.hide=!S.hide;savePrefs();render()}
     else if(el.dataset.act==='allpostes'){S.all=!S.all;render()}
-    else if(el.dataset.act==='close'){S.open=null;S.subSel=null;S.merch=null;render();window.scrollTo(0,0)}
+    else if(el.dataset.act==='insp'){S.insP=!S.insP;render()}
+    else if(el.dataset.act==='close'){S.insP=false;S.open=null;S.subSel=null;S.merch=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
     else if(el.dataset.act==='retry'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='unlock'){doUnlock()}
