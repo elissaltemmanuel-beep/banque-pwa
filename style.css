@@ -408,3 +408,9 @@ h2,h3{font-size:16px;font-weight:700;margin:0 4px}
 :root:root .fchip,:root:root .fsel select,:root:root .fseg,:root:root .pchip{border:0!important}
 
 :root:root :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Actualiser : flèche qui tourne pendant la lecture */
+@keyframes banque-spin{to{transform:rotate(360deg)}}
+.iconbtn.spin svg{animation:banque-spin .9s linear infinite}
+@media (prefers-reduced-motion:reduce){.iconbtn.spin svg{animation:none}}
+.nav .fbadge{position:absolute;top:4px;right:calc(50% - 22px)}
