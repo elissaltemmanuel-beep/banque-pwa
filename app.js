@@ -228,6 +228,27 @@
     landingCard()+chartCard()+(revMode()?revSection():
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
   }
+  /* évolution par poste : du 1er janvier à aujourd'hui, face à la même date l'an dernier */
+  function rapportYtd(){
+    var k=D.keys||[], ci=k.indexOf(D.today.month), mo=+D.today.month.slice(5,7); if(ci<0||ci-(mo-1)-12<0) return null;
+    var i0=ci-(mo-1);
+    function ytd(arr,tdArr,off){ if(!arr) return 0; var t=0,i; for(i=i0+off;i<ci+off;i++) t+=arr[i]||0; return t+((tdArr&&tdArr[ci+off])||0); }
+    var rows=[];
+    D.cats.forEach(function(c){ if(c.n==='Divers'||c.n==='Famille et proches') return;
+      var a=ytd(c.all,c.td,0), b=ytd(c.all,c.td,-12), top=null;
+      (c.subs||[]).forEach(function(s){ var d=ytd(s.all,s.td,0)-ytd(s.all,s.td,-12); if(!top||d>top.d) top={n:s.n,d:d,a:ytd(s.all,s.td,0),b:ytd(s.all,s.td,-12)}; });
+      rows.push({n:c.n,a:a,b:b,d:a-b,top:top}); });
+    rows=rows.filter(function(r){return r.a>0||r.b>0}).sort(function(x,y){return y.d-x.d});
+    return {rows:rows,y:+D.today.month.slice(0,4),total:rows.reduce(function(s,r){return s+r.d},0)}; }
+  function rapportPoints(){
+    var P=[], L=[], unc=uncategorised(), subs=(D.subs&&D.subs.list)||[];
+    (D.dups||[]).slice(0,3).forEach(function(d){ P.push({p:'Paiement identique',t:esc(d.l)+' : '+d.n+' paiements identiques le '+fmtDate(d.d)+', pas de preuve de doublon. À vérifier dans l’appli bancaire.',a:null,s:'À vérifier',k:'warn'}); });
+    if(unc.length){ var sm=unc.reduce(function(s,x){return s+Math.abs(x.sum)},0), n=unc.reduce(function(s,x){return s+x.n},0); P.push({p:'Opérations non identifiées',t:n+' opération'+(n>1?'s':'')+' récente'+(n>1?'s':'')+' sans catégorie : '+unc.slice(0,4).map(function(x){return esc(cleanLabel(x.l))}).join(', ')+(unc.length>4?'…':'')+'.',a:sm,s:'À identifier',k:'warn'}); }
+    (D.excOps||[]).slice(0,3).forEach(function(o){ P.push({p:'Dépense ponctuelle',t:esc(cleanLabel(o[1]))+', '+fmtDate(o[0])+' · '+esc(o[2])+'.',a:-o[3],s:'Info',k:'ok'}); });
+    subs.filter(function(x){return x.active&&x.hausse}).slice(0,3).forEach(function(x){ P.push({p:'Hausse d’abonnement',t:esc(x.n)+' : '+eur(x.hausse.from,true)+' → '+eur(x.hausse.to,true)+' par mois.',a:null,s:'À vérifier',k:'warn'}); });
+    subs.filter(function(x){return x.active&&x.nouveau}).slice(0,3).forEach(function(x){ P.push({p:'Nouvel abonnement',t:esc(x.n)+' : '+eur(x.amt,true)+' par mois, repéré récemment.',a:x.amt,s:'Info',k:'ok'}); });
+    var ex=exportInfo(); if(ex.stale) P.push({p:'Export ancien',t:esc(ex.label)+'. Déposez un nouvel export pour des chiffres à jour.',a:null,s:'À mettre à jour',k:'warn'});
+    return P; }
   /* ---------- rapport d'analyse ---------- */
   function rapportScreen(){
     var R=D.rapport, dc=R&&R.decouvert, E=R&&R.eq, L=D.proj&&D.proj.landing, K=D.kpi||{};
@@ -263,12 +284,29 @@
     var tr='';
     if(L&&L.days>0){ var f=D.forecast||{}; tr='<div class="rtl">'+line(D.soldeEstime?'Solde estimé aujourd’hui':'Solde du compte',eur(D.solde))+line('Dépenses par carte estimées par jour',eur(f.daily||0))+line('Paie estimée',D.proj.salary&&D.proj.salary.day?'le '+D.proj.salary.day+' du mois':'—')+line('Atterrissage au '+fmtDate(L.date),eur(L.value),1)+'</div><p class="note">Atterrissage : solde estimé, moins les dépenses moyennes par carte sur 90 jours, jusqu’à la veille de la paie estimée d’après les six derniers mois.</p>'; }
     else tr='<p class="muted" style="font-size:13px">Pas d’atterrissage à afficher : la paie est déjà arrivée ou n’est pas estimable.</p>';
+    var Y=rapportYtd(), ytdHtml='';
+    if(Y){ var up=Y.rows.filter(function(r){return r.d>0}).slice(0,3), mxd=Math.max.apply(null,Y.rows.map(function(r){return Math.abs(r.d)}).concat([1]));
+      ytdHtml='<p class="rp">'+(up.length?'Depuis janvier, '+up.map(function(r){return '<b>'+esc(r.n.toLowerCase())+'</b>'}).join(', ')+' ont le plus augmenté. Au total, les postes ci-dessous coûtent '+(Y.total>=0?eur(Y.total)+' de plus':eur(-Y.total)+' de moins')+' qu’à la même date en '+(Y.y-1)+'.':'Aucun poste n’a augmenté depuis janvier, face à la même date en '+(Y.y-1)+'.')+'</p>'+
+        '<div class="rev" role="list">'+Y.rows.slice(0,9).map(function(r){ var pos=r.d>=0; return '<div class="rev-r" role="listitem" aria-label="'+esc(r.n)+' : '+(pos?'+':'−')+Math.round(Math.abs(r.d))+' euros"><span class="rev-n">'+esc(r.n)+'</span><span class="rev-b"><i class="'+(pos?'up':'dn')+'" style="width:'+(Math.abs(r.d)/mxd*100).toFixed(1)+'%"></i></span><b class="'+(pos?'badt':'okt')+'">'+(pos?'+':'−')+eur(Math.abs(r.d))+'</b></div>'; }).join('')+'</div>'+
+        '<p class="note">Écart de dépenses du 1er janvier au '+esc(fmtDate(D.today.iso))+', '+Y.y+' contre '+(Y.y-1)+'. « Famille et proches » et « Divers » sont exclus : leurs virements irréguliers faussent la comparaison.</p>'+
+        '<ul class="rul">'+up.map(function(r){ return '<li><b>'+esc(r.n)+' (+'+eur(r.d)+')</b>'+(r.top&&r.top.d>0&&r.top.n!==r.n?' : surtout '+esc(r.top.n.toLowerCase())+' (+'+eur(r.top.d)+', '+eur(r.top.b)+' → '+eur(r.top.a)+').':'.')+'</li>'; }).join('')+'</ul>'; }
+    else ytdHtml='<p class="muted" style="font-size:13px">Il faut au moins un an d’historique pour comparer avec la même date l’an dernier.</p>';
+    var pts=rapportPoints(), ptsHtml=pts.length? '<div class="rpts">'+pts.map(function(x){ return '<div class="rpt"><div class="rpt-h"><b>'+x.p+'</b><span class="badge '+x.k+'">'+x.s+'</span></div><div class="rpt-t">'+x.t+'</div>'+(x.a!=null?'<div class="rpt-a">'+eur(x.a)+'</div>':'')+'</div>'; }).join('')+'</div>' : '<p class="muted" style="font-size:13px">Rien à signaler : aucun doublon, aucune opération non identifiée, aucune hausse d’abonnement.</p>';
+    var st=D.stats||{}, sy=D.sync||{};
+    var meth='<ul class="rul"><li><b>Données :</b> '+st.rows+' opérations du compte courant, du '+esc(fmtDate(st.from))+' au '+esc(fmtDate(st.to))+(sy.fileName?', dernier export lu : '+esc(sy.fileName):'')+'.</li>'+
+      '<li><b>Classement :</b> vos règles par libellé (Sheet et fichier du Drive), puis les catégories de la banque regroupées en grands postes. Les mouvements internes ('+(st.internal||0)+') sont exclus ; les remboursements de mutuelle sont déduits de la santé.</li>'+
+      '<li><b>Moyennes :</b> calculées sans les dépenses exceptionnelles (paiement d’au moins 500 € hors prélèvement récurrent).</li>'+
+      '<li><b>Atterrissage :</b> solde estimé, moins les dépenses moyennes par carte sur 90 jours, jusqu’à la veille de la paie estimée d’après les six derniers mois.</li></ul>'+
+      '<h3 class="ins-h" style="margin-top:4px">Limites</h3><ul class="rul"><li>Un seul compte courant : sans l’export du Livret A, l’épargne réelle est inconnue.</li><li>Les opérations datées après l’export sont présumées exécutées. Les repères externes sont indicatifs, ce ne sont pas des normes.</li></ul>';
     return back+'<div class="rcover"><div class="reye">Rapport d’analyse financière</div><h1>Votre compte courant</h1><p>'+D.stats.rows+' opérations du '+esc(fmtDate(D.stats.from))+' au '+esc(fmtDate(D.stats.to))+'.</p></div>'+
       sec('','Synthèse','Que faut-il retenir ?',tiles+consts)+
       sec('01','Le redressement','D’où vient le compte, et où en est-il ?','<p class="rp">'+daysTxt+(dc.min?' Le point le plus bas atteint '+(dc.min.v<0?'−':'')+eur(Math.abs(dc.min.v))+' ('+esc(fmtDate(dc.min.d))+').':'')+'</p>'+years)+
       sec('02','L’équilibre courant','Vos revenus couvrent-ils vos dépenses ?','<p class="rp">Douze derniers mois complets ('+esc(mlab(E.from))+' à '+esc(mlab(E.to))+').</p>'+bars+tab+nuance+gauges)+
-      sec('03','La trésorerie à court terme','Que restera-t-il avant la prochaine paie ?',tr)+
-      '<p class="note">Constats chiffrés et alertes factuelles : ce rapport ne constitue pas un conseil financier. Les repères (HCSF, usage courant) sont indicatifs, ce ne sont pas des normes. Seul le compte courant est analysé : le Livret A n’est pas inclus. Les moyennes excluent les dépenses exceptionnelles (paiement d’au moins 500 € hors prélèvement récurrent) ; les mouvements entre vos comptes sont exclus.</p>'; }
+      sec('03','Où part l’argent','Quels postes montent depuis janvier ?',ytdHtml)+
+      sec('04','La trésorerie à court terme','Que restera-t-il avant la prochaine paie ?',tr)+
+      sec('05','Les points d’attention','Qu’y a-t-il à vérifier ou à trancher ?',ptsHtml)+
+      sec('06','Méthode et limites','Sur quoi repose l’analyse ?',meth)+
+      '<p class="note">Constats chiffrés et alertes factuelles : ce rapport ne constitue pas un conseil financier. Les repères (HCSF, usage courant) sont indicatifs, ce ne sont pas des normes.</p>'; }
   /* ---------- vacances (zone C) ---------- */
   function vacList(){ return (D&&D.vac)||[]; }
   function vacCur(){ return vacList().filter(function(v){return v.cur})[0]; }
