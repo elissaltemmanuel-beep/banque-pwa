@@ -179,17 +179,34 @@
       return driveList("'" + fo[0].id + "' in parents and trashed=false and name contains '.csv'");
     }).then(function (files) {
       if (!files.length) throw new Error('Aucun fichier .csv dans le dossier d\'export.');
-      var f = files[0], sig = f.id + '|' + f.modifiedTime, info = { fileName: f.name, fileDate: f.modifiedTime.slice(0, 10) };
+      // tous les CSV du dossier comptent : l'export le plus récent (par dernière date) sert de base,
+      // les autres n'apportent que de l'historique plus ancien
+      var sig = files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(',');
       return readOps(id).then(function (existing) {
+        var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10) };
         if (!force && load('banque-sig') === sig && existing.length) { info.skipped = true; info.lastSync = load('banque-last'); return { info: info, rows: existing }; }
-        return call(DRIVE + '/files/' + f.id + '?alt=media').then(function (r) { return r.text(); }).then(function (txt) {
-          var incoming = toStorageRows(parseCsv(txt.replace(/^﻿/, ''), ';'));
-          var res = mergeIncremental(existing, incoming, today(), parseInt(cfg.OVERLAP_DAYS, 10) || 45);
-          return writeRange(id, 'Operations', 14, res.rows).then(function () {
+        var parsed = [], lastErr = null;
+        return files.reduce(function (p, f) {
+          return p.then(function () {
+            return call(DRIVE + '/files/' + f.id + '?alt=media').then(function (r) { return r.text(); }).then(function (txt) {
+              try { parsed.push({ f: f, rows: toStorageRows(parseCsv(txt.replace(/^﻿/, ''), ';')) }); } catch (e) { lastErr = e; }
+            });
+          });
+        }, Promise.resolve()).then(function () {
+          if (!parsed.length) throw lastErr || new Error('Aucun export lisible dans le dossier.');
+          parsed.sort(function (a, b) {
+            var da = a.rows[a.rows.length - 1][0], db = b.rows[b.rows.length - 1][0];
+            return da === db ? b.rows.length - a.rows.length : (da < db ? 1 : -1);
+          });
+          var base = parsed[0];
+          info.fileName = base.f.name; info.fileDate = base.f.modifiedTime.slice(0, 10);
+          var res = mergeIncremental(existing, base.rows, today(), parseInt(cfg.OVERLAP_DAYS, 10) || 45), rows = res.rows, history = 0;
+          parsed.slice(1).forEach(function (p) { var h = mergeHistory(rows, p.rows); rows = h.rows; history += h.added; });
+          return writeRange(id, 'Operations', 14, rows).then(function () {
             store('banque-sig', sig);
-            info.skipped = false; info.added = res.added; info.replaced = res.replaced; info.kept = res.kept;
+            info.skipped = false; info.added = res.added; info.replaced = res.replaced; info.kept = res.kept; info.history = history;
             info.lastSync = new Date().toISOString().slice(0, 16); store('banque-last', info.lastSync);
-            return { info: info, rows: res.rows };
+            return { info: info, rows: rows };
           });
         });
       });

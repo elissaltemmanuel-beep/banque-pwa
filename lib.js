@@ -121,6 +121,17 @@ function mergeIncremental(existing, incoming, todayIso, overlapDays) {
   };
 }
 
+/**
+ * Export plus ancien (complément d'historique) : on ne garde que ses opérations antérieures
+ * à la première date déjà connue, sans toucher à l'existant.
+ */
+function mergeHistory(existing, incoming) {
+  if (!existing.length) return { rows: incoming, added: incoming.length };
+  var first = existing[0][0];
+  var older = incoming.filter(function (r) { return r[0] < first; });
+  return { rows: older.concat(existing), added: older.length };
+}
+
 
 // ------------------------------------------------- règles de catégorisation
 
@@ -568,7 +579,7 @@ function aggregate(rows, todayIso, opts) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental,
+  module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory,
     aggregate: aggregate, addDays_: addDays_, parseNumber_: parseNumber_ };
 }
 
