@@ -196,6 +196,7 @@
   }
 
   // ------------------------------------------------------------- import
+  var SYNC_V = 'v3';
   function syncIfNewFile(id, cfg, force) {
     return driveList("mimeType='application/vnd.google-apps.folder' and name='" + esc(cfg.FOLDER_NAME || CFG.FOLDER_NAME) + "' and trashed=false").then(function (fo) {
       if (!fo.length) throw new Error('Dossier « ' + (cfg.FOLDER_NAME || CFG.FOLDER_NAME) + ' » introuvable dans votre Drive.');
@@ -204,11 +205,11 @@
       if (!files.length) throw new Error('Aucun fichier .csv dans le dossier d\'export.');
       // tous les CSV du dossier comptent : l'export le plus récent (par dernière date) sert de base,
       // les autres n'apportent que de l'historique plus ancien
-      var sig = files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(',');
+      var sig = SYNC_V + '#' + files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(',');   // SYNC_V : à incrémenter quand la logique de fusion change, pour forcer une relecture complète au prochain passage
       return readOps(id).then(function (existing) {
         var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10), newest: { name: f0.name, modified: f0.modifiedTime }, checkedAt: new Date().toISOString() };
         store('banque-checked', info.checkedAt);
-        if (!force && load('banque-sig') === sig && existing.length) {
+        if (!force && load('banque-sig') === sig && load('banque-check') && existing.length) {
           // le fichier de base (le plus récent par ses dates) n'est pas forcément le dernier modifié
           try { var b0 = JSON.parse(load('banque-base') || 'null'); if (b0 && b0.n) { info.fileName = b0.n; info.fileDate = b0.d; } } catch (e) {}
           info.skipped = true; info.lastSync = load('banque-last'); try { info.check = JSON.parse(load('banque-check') || 'null'); } catch (e) {} return { info: info, rows: existing }; }
