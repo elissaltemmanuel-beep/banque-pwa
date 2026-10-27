@@ -124,7 +124,7 @@
   function chartInner(po,so){
     var PR=per(), P=D.proj, C=D.curve, G=150, B=170, N=30, gr=S.f.graph, svg='', sum_='', leg='', badge='', aria='', title=PR.label;
     var poste=po||(S.f.poste?CATS.filter(function(c){return c.id===S.f.poste})[0]:null), sous=so||(!po&&poste&&S.f.sous?poste.subs.filter(function(s){return s.n===S.f.sous})[0]:null);
-    var COL={solde:'var(--accent)',dep:'var(--accent)',rev:'var(--c2)'};
+    var COL={solde:'var(--accent)',dep:'var(--accent)',rev:'var(--c2)',bal:'var(--accent)'};
     function X(i){ return 10+i/(Math.max(N-1,1))*330; }
     function Y(v,mx){ return (B-Math.max(0,Math.min(v,mx))/mx*G).toFixed(1); }
     function pts(arr,mx){ return arr.map(function(v,i){return X(i).toFixed(1)+','+Y(v,mx)}).join(' '); }
@@ -150,12 +150,24 @@
       if(po){ var s0=(so||po).all||[], f0=0; while(f0<s0.length-7&&!s0[f0]) f0++; slots=all.slice(f0).map(function(k,j){ return {key:k,i:f0+j}; }); rolling=true; VW=20+SW*slots.length; }
       var vals, name, curSlot=-1; slots.forEach(function(s,n){ if(s.key===D.today.month) curSlot=n; });
       if(poste){ var src=(sous||poste).all||[]; vals=slots.map(function(s){return s.i<0?null:(src[s.i]||0)}); name='Dépenses'; title=poste.n+(sous?' › '+sous.n:'')+' · '+(po?'tout l’historique':rolling?'12 derniers mois':yy); }
-      else { var ser=D.seriesAll||[]; vals=slots.map(function(s){ var o=s.i<0?null:ser[s.i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:o.bal) : null; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':'Solde de fin de mois'; title=rolling?'12 derniers mois':'Année '+yy; }
-      var projV=null; if(!poste&&curSlot>=0) projV=gr==='dep'?P.depEnd:gr==='rev'?P.revEnd:P.value;
+      else { var ser=D.seriesAll||[]; vals=slots.map(function(s){ var o=s.i<0?null:ser[s.i]; return o? (gr==='dep'?o.dep:gr==='rev'?o.rev:gr==='bal'?o.rev-o.dep:o.bal) : null; }); name=gr==='dep'?'Dépenses':gr==='rev'?'Revenus':gr==='bal'?'Balance du mois':'Solde de fin de mois'; title=rolling?'12 derniers mois':'Année '+yy; }
+      var projV=null; if(!poste&&curSlot>=0) projV=gr==='dep'?P.depEnd:gr==='rev'?P.revEnd:gr==='bal'?P.revEnd-P.depEnd:P.value;
       var known=vals.filter(function(v){return v!=null});
-      var mx=niceCeil(Math.max(maxOf(known.length?known:[0]),projV||0,1)), bw=SW, g=barGrid(mx), hi=PR.isYear? -1 : slots.map(function(s){return s.key}).indexOf(PR.key);
+      var balMode=!poste&&gr==='bal', mx=niceCeil(Math.max(maxOf(known.length?known:[0]),projV||0,1)), bw=SW, g=balMode?'':barGrid(mx), hi=PR.isYear? -1 : slots.map(function(s){return s.key}).indexOf(PR.key);
       function kv(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000? (Math.round(x/100)/10).toString().replace('.',',')+'K' : String(Math.round(x))); }
       N=12; var col=poste?'var(--accent)':COL[gr];
+      function drawBal(){ var pos=Math.max.apply(null,known.concat([projV||0,0])), neg=-Math.min.apply(null,known.concat([projV||0,0])), mxp=niceCeil(Math.max(pos,1)), tot=mxp+(neg>0?niceCeil(neg):0), u=G/tot, zy=20+mxp*u, o='<line x1="10" x2="'+(VW-10)+'" y1="'+zy.toFixed(1)+'" y2="'+zy.toFixed(1)+'" stroke="var(--rim-soft)"/>';
+        slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, mn=+key.slice(5,7)-1, sel=n===hi, last=n===curSlot, has=v!=null, bx=(cx-(SW-10)/2).toFixed(1);
+          o+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="200" fill="transparent"/>';
+          function one(val,dash){ var h=Math.max(Math.abs(val)*u,2), y=val<0?zy:zy-h, c=val<0?'var(--bad)':col; return '<rect x="'+bx+'" y="'+y.toFixed(1)+'" width="'+(SW-10)+'" height="'+h.toFixed(1)+'" rx="6" '+(dash?'fill="none" stroke="'+c+'" stroke-dasharray="2 2"':'fill="'+(sel||hi<0?c:(val<0?'color-mix(in srgb,var(--bad) 45%,transparent)':'var(--neu)'))+'"')+'/>'; }
+          var shown=last&&projV!=null?projV:v;
+          if(has&&!(last&&projV!=null)) o+=one(v,false); if(last&&projV!=null) o+=one(projV,true);
+          if(!S.hide&&shown!=null){ var yy2=shown<0?zy+Math.max(Math.abs(shown)*u,2)+12:zy-Math.max(Math.abs(shown)*u,2)-4; o+=txt(cx.toFixed(1),yy2.toFixed(1),kv(shown),{a:'middle',size:14,fill:sel?'var(--text)':'var(--muted)',w:700}); }
+          o+=txt(cx.toFixed(1),186,MOIS_C[mn]||'',{a:'middle',size:11.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:0})+((n===0||mn===0)?txt(cx.toFixed(1),198,key.slice(0,4),{a:'middle',size:8.5}):'')+'</g>'; });
+        var cp=vals.filter(function(v,n){return v!=null&&n!==curSlot}), av=cp.length>=3?sum(cp)/cp.length:null;
+        if(av!=null) o+='<line x1="10" x2="'+(VW-10)+'" y1="'+(zy-av*u).toFixed(1)+'" y2="'+(zy-av*u).toFixed(1)+'" stroke="var(--muted)" stroke-opacity=".5" stroke-width="1" stroke-dasharray="3 4" pointer-events="none"/>';
+        return o; }
+      if(balMode) g=drawBal(); else
       slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, mn=+key.slice(5,7)-1, lab=MOIS_C[mn]||'', sel=n===hi, last=n===curSlot, has=v!=null;
         g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="200" fill="transparent"/>';
         if(has) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(v,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
@@ -163,17 +175,18 @@
         if(!S.hide&&has) g+=txt(cx.toFixed(1),(Y(last&&projV!=null?projV:v,mx)-4),kv(last&&projV!=null?projV:v),{a:'middle',size:14,fill:sel?'var(--text)':'var(--muted)',w:700});
         g+=txt(cx.toFixed(1),186,lab,{a:'middle',size:11.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:0})+((n===0||mn===0)?txt(cx.toFixed(1),198,key.slice(0,4),{a:'middle',size:8.5}):'')+'</g>'; });
       var comp=vals.filter(function(v,n){return v!=null&&n!==curSlot}), avgV=comp.length>=3? sum(comp)/comp.length : null;
-      if(avgV!=null) g+='<line x1="10" x2="'+(VW-10)+'" y1="'+Y(avgV,mx)+'" y2="'+Y(avgV,mx)+'" stroke="var(--muted)" stroke-opacity=".5" stroke-width="1" stroke-dasharray="3 4" pointer-events="none"/>';
+      if(avgV!=null&&!balMode) g+='<line x1="10" x2="'+(VW-10)+'" y1="'+Y(avgV,mx)+'" y2="'+Y(avgV,mx)+'" stroke="var(--muted)" stroke-opacity=".5" stroke-width="1" stroke-dasharray="3 4" pointer-events="none"/>';
       vals=known;
       var nz=vals.filter(function(v){return v>0}), mean=nz.length? sum(nz)/nz.length : 0;
       sum_= poste? ('Dépenses mensuelles '+(String(poste.id).slice(0,2)==='m|'?'de ce marchand':'du poste')+'. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
         : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Fin de ce mois : '+eur(P.value)+(P.salary.expected>0?', paie attendue vers le '+P.salary.day+' comprise':'')+'.'+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' Le point le plus bas, juste avant la paie, est de '+eur(P.landing.value)+' au '+fmtDate(P.landing.date)+'.':''):'')
+        : gr==='bal'? 'Balance de chaque mois : revenus moins dépenses, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'')
         : (gr==='dep'?'Dépenses':'Revenus')+' de chaque mois, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'');
       aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(projV!=null?'<span>Pointillés : projection</span>':'')+(avgV!=null?'<span><i style="display:inline-block;width:16px;border-top:1px dashed var(--muted);vertical-align:middle;margin-right:5px"></i>Moyenne '+kv(avgV)+'</span>':'')+'<span>Glissez pour voir les mois précédents</span>';
     }
     sum_=sum_.replace(/\.{2,}/g,'.');
     return '<div class="kchart">'+(poste?'<div class="row"><h3 style="font-size:14px">'+esc(title)+'</h3>'+badge+'</div>':'')+
-      (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+(poste?'':KCMP)+
+      (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus'],['bal','Balance']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+(poste?'':KCMP)+
       '<div class="kcard"><p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
       ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 204" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>')+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div></div>'; }
@@ -191,7 +204,7 @@
   /* ---------- carte KPI de l'accueil : solde, atterrissage et dépenses du mois en cours ---------- */
   function kchip(d,p,goodUp){ if(d==null) return ''; var up=d>=0, good=goodUp?up:!up, r=Math.round(Math.abs(p||0)), cls=Math.abs(d)<1?'eq':good?'good':'bad';
     if(Math.abs(d)<1) return '<span class="kchip eq">=</span>';
-    var arrow=up?'▲':'▼', sg=up?'+':'−', hasP=p!=null&&r>0;
+    var arrow=up?'▲':'▼', sg=up?'+':'−', hasP=p!=null&&r>0&&r<=999;
     /* le pourcentage d'abord, en gras, puis le montant en plus petit et en poids normal */
     return '<span class="kchip '+cls+'">'+arrow+' '+(hasP?'<b>'+sg+r+' %</b><small>'+sg+eur(Math.abs(d))+'</small>':'<b>'+sg+eur(Math.abs(d))+'</b>')+'</span>'; }
   function kpiCard(){
@@ -221,16 +234,19 @@
     var mname=MOIS_L[+P_.mo-1], when=P_.cur?mname+', au '+DAY:mname+' '+P_.y;
     function cum(k,f){ var x=Dd[k]&&Dd[k][f]; return x?x.slice(0,nDay).reduce(function(a,v){return a+v},0):null; }
     function bal(k){ var x=Dd[k]&&Dd[k].b; if(!x) return null; for(var i=Math.min(nDay,x.length)-1;i>=0;i--) if(x[i]!=null) return x[i]; return null; }
-    var fn=gm==='solde'?bal:function(k){return cum(k,gm==='rev'?'r':'d')}, ks=D.keys||[], ix=ks.indexOf(sk), cur0=P_.isYear?null:(P_.cur&&gm==='dep'?(cc.depCum||[])[DAY-1]:(P_.cur&&gm==='rev'?(cc.revCum||[])[DAY-1]:(P_.cur&&gm==='solde'?D.solde:fn(sk))));
+    function balM(k){ var o=SA.filter(function(x){return x.k===k})[0]; return o?o.rev-o.dep:null; }
+    var fn=gm==='solde'?bal:gm==='bal'?balM:function(k){return cum(k,gm==='rev'?'r':'d')}, ks=D.keys||[], ix=ks.indexOf(sk), cur0=P_.isYear?null:(P_.cur&&gm==='dep'?(cc.depCum||[])[DAY-1]:(P_.cur&&gm==='rev'?(cc.revCum||[])[DAY-1]:(P_.cur&&gm==='solde'?D.solde:P_.cur&&gm==='bal'?D.proj.revEnd-D.proj.depEnd:fn(sk))));
     var prv=ix>0?fn(ks[ix-1]):null, pr12=ks.slice(Math.max(0,ix-12),ix).map(fn).filter(function(v){return v!=null}), avg=pr12.length>=3?sum(pr12)/pr12.length:null;
     if(P_.cur&&gm==='dep'&&(cc.habit||[])[DAY-1]>0) avg=cc.habit[DAY-1];
-    var ttl=(gm==='solde'?'Solde de ':gm==='rev'?'Revenus de ':'Dépenses de ')+when, goodUp=gm!=='dep';
-    if(cur0!=null&&(gm==='solde'||cur0>0)){ var dp=prv!=null?cur0-prv:null, da=avg!=null?cur0-avg:null;
-      dep='<div class="ksec">'+(gm==='solde'?'':'<span class="muted" style="font-size:13px">'+esc(ttl)+'</span><span class="kdep">'+eur(cur0)+'</span>')+
+    var ttl=(gm==='solde'?'Solde de ':gm==='rev'?'Revenus de ':gm==='bal'?'Balance de ':'Dépenses de ')+when, goodUp=gm!=='dep';
+    if(cur0!=null&&(gm==='solde'||gm==='bal'||cur0>0)){ var dp=prv!=null?cur0-prv:null, da=avg!=null?cur0-avg:null;
+      dep='<div class="ksec">'+(gm==='solde'||gm==='bal'?'':'<span class="muted" style="font-size:13px">'+esc(ttl)+'</span><span class="kdep">'+eur(cur0)+'</span>')+
         '<div class="kcmp">'+(dp!=null?'<div><span class="muted">Mois dernier</span><b>'+eur(prv)+'</b>'+kchip(dp,prv?dp/Math.abs(prv)*100:null,goodUp)+'</div>':'')+(da!=null?'<div><span class="muted">Moyenne</span><b>'+eur(avg)+'</b>'+kchip(da,avg?da/Math.abs(avg)*100:null,goodUp)+'</div>':'')+'</div>'+
-        '<div class="note">'+(gm==='solde'?'Solde du compte courant':gm==='rev'?'Revenus, exceptionnels compris':'Exceptionnelles comprises')+', mouvements entre comptes exclus. '+(P_.cur?'Comparé au même jour du mois ; la moyenne porte sur les 12 derniers mois.':'La moyenne porte sur les 12 mois précédents.')+'</div></div>'; }
+        '<div class="note">'+(gm==='solde'?'Solde du compte courant':gm==='rev'?'Revenus, exceptionnels compris':gm==='bal'?'Revenus moins dépenses du mois':'Exceptionnelles comprises')+', mouvements entre comptes exclus. '+(gm==='bal'?(P_.cur?'Ce mois-ci : projection de fin de mois, comparée aux balances finales des mois précédents.':'Balances finales des mois.'):P_.cur?'Comparé au même jour du mois ; la moyenne porte sur les 12 derniers mois.':'La moyenne porte sur les 12 mois précédents.')+'</div></div>'; }
     KCMP=dep;
-    return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+right+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+strip+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
+    var BR=''; (function(){ var Pm=per(), key=Pm.isYear?D.today.month:Pm.key, cur=key===D.today.month, o=SA.filter(function(x){return x.k===key})[0], v=cur?(D.proj.revEnd-D.proj.depEnd):(o?o.rev-o.dep:null); if(v==null||isNaN(v)) return;
+      var m=MOIS_L[+key.slice(5,7)-1]; BR='<div class="hbal"><span class="bl1"><span>Balance '+(/^[aeiouhéàâêîôû]/.test(m)?'d’':'de ')+m+(cur?'':' '+key.slice(0,4))+'</span><span class="sm">'+(cur?'projection de fin de mois':'balance finale')+'</span></span><b class="bv '+(v<0?'neg':'pos')+'">'+(v<0?'−':'+')+eur(Math.abs(v))+'</b></div>'; })();
+    return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+'<span class="hsep"></span>'+right+strip+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+BR+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
   function homeScreen(){
     return kpiCard()+
     (revMode()?revSection():

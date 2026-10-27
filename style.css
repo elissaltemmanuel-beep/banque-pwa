@@ -450,3 +450,18 @@ input[type=search]{border:0!important;border-radius:16px!important;box-shadow:va
 .nav .fbadge{top:-6px;right:-6px;background:#ff7a3d!important;color:#fff!important;font-size:11px;border:2px solid var(--glass)}
 .fpanel.fpanel,.fpanel.fpB{border-radius:30px 30px 0 0!important}
 .switch[data-tab="bud"]{font-weight:600;font-size:14px}
+
+/* ===== Police Sora (embarquée, fonctionne hors ligne) ===== */
+@font-face{font-family:'Sora';font-style:normal;font-weight:100 800;font-display:swap;src:url(fonts/sora-latin.woff2) format('woff2')}
+:root:root{--font:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,Roboto,sans-serif}
+
+/* ===== Haut bleu : Solde estimé et Livret A dans un seul rectangle, trait vertical léger, Total liquide dedans, ligne Balance du mois ===== */
+.hero .ktiles{display:grid;grid-template-columns:1fr 1px 1fr;gap:0 14px;background:rgba(255,255,255,.11);border-radius:22px;padding:14px}
+.hero .ktile{background:none!important;padding:0!important;border-radius:0!important;box-shadow:none!important}
+.hsep{background:rgba(255,255,255,.18);border-radius:1px}
+.hero .kstrip{grid-column:1/-1;background:none!important;border:0!important;border-top:1px solid rgba(255,255,255,.16)!important;border-radius:0!important;padding:12px 0 0!important;margin-top:12px}
+.hero .kstrip .kl .muted{color:rgba(255,255,255,.68)!important}
+.hbal{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.11);border-radius:22px;padding:8px 14px}
+.hbal .bl1{display:flex;flex-direction:column;line-height:1.25;font-size:12.5px;color:rgba(255,255,255,.68);font-weight:500}
+.hbal .sm{font-size:11px;color:rgba(255,255,255,.62)}
+.hbal .bv{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.hbal .neg{color:#ffb4ad}.hbal .pos{color:#8ee6bb}
