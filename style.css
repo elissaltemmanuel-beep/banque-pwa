@@ -470,3 +470,10 @@ input[type=search]{border:0!important;border-radius:16px!important;box-shadow:va
 .hero .kchip.bad{background:rgba(255,128,120,.22)!important;color:#ffb4ad!important}
 .hero .kchip.eq{background:rgba(255,255,255,.14)!important;color:#fff!important}
 .seg button{font-weight:700}
+
+/* alignement exact sur la maquette bleue : marges, haut de page, écart des cartes */
+.screen{padding:0 6px 130px!important}
+.hero{margin-left:-6px;margin-right:-6px}
+.hero:first-child{margin-top:8px}
+.kwrap .kcmp{gap:10px}
+body{padding-top:0!important}
