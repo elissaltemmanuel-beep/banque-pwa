@@ -414,3 +414,39 @@ h2,h3{font-size:16px;font-weight:700;margin:0 4px}
 .iconbtn.spin svg{animation:banque-spin .9s linear infinite}
 @media (prefers-reduced-motion:reduce){.iconbtn.spin svg{animation:none}}
 .nav .fbadge{position:absolute;top:4px;right:calc(50% - 22px)}
+
+/* ===== Design bleu (27/10/2026) : haut bleu nuit arrondi, tuiles en verre bleuté, cartes blanches très arrondies, bouton Filtres rond au centre de la barre ===== */
+:root:root{--bg:#0a0d22;--glass:#141939;--glass2:#1c2247;--rim-soft:#242b57;--track:#242b57;--neu:#2f376a;--accent:#3b9bff;--accent-ink:#ffffff;--hero1:#060a2c;--hero2:#33288a;--hero3:#0b2670;--bshadow:0 6px 22px rgba(0,0,0,.4)}
+@media (prefers-color-scheme: light){:root:root:not([data-theme="dark"]){--bg:#f1f2f7;--glass:#ffffff;--glass2:#f4f6fb;--rim-soft:#e6e9f2;--track:#e6e9f2;--neu:#d3d9ea;--accent:#1e88f0;--hero1:#0a1148;--hero2:#4b3bb5;--hero3:#0f3a8f;--bshadow:0 6px 22px rgba(20,30,90,.10)}}
+:root:root[data-theme="light"]{--bg:#f1f2f7;--glass:#ffffff;--glass2:#f4f6fb;--rim-soft:#e6e9f2;--track:#e6e9f2;--neu:#d3d9ea;--accent:#1e88f0;--hero1:#0a1148;--hero2:#4b3bb5;--hero3:#0f3a8f;--bshadow:0 6px 22px rgba(20,30,90,.10)}
+.hero{position:relative;margin:0 0 14px;padding:14px 14px 18px;border-radius:34px;background:radial-gradient(100% 55% at 85% -5%,var(--hero2) 0%,transparent 65%),radial-gradient(90% 60% at 0% 100%,var(--hero3) 0%,transparent 70%),linear-gradient(180deg,var(--hero1),#101b66);display:flex;flex-direction:column;gap:12px;color:#fff;text-align:left}
+.hero.slim{padding-bottom:20px}
+.hero h1,.hero h2{color:#fff!important;margin:0}.hero .back{color:#9fd0ff!important}.hero .muted{color:rgba(255,255,255,.68)!important}
+.hero .iconbtn{background:rgba(255,255,255,.14)!important;color:#fff!important;border-radius:16px!important}
+.hero .ktile,.hero .kdetail{background:rgba(255,255,255,.11)!important;color:#fff!important;border-radius:22px!important}
+.hero .kstrip{background:rgba(255,255,255,.11)!important;color:#fff!important;border-radius:999px!important;padding:10px 16px}
+.hero .note,.hero .ktile .muted{color:rgba(255,255,255,.68)!important}.hero .kwrap .ktile .note b,.hero .ktile .note b{color:#fff!important}
+.hero .kproj{color:#ffc46b!important}
+.hero .kchip.good{background:#d4f3e3!important;color:#0e7a4c!important}.hero .kchip.bad{background:#fcdad6!important;color:#b5322a!important}.hero .kchip.eq{background:rgba(255,255,255,.18)!important;color:#fff!important}
+.hero .badge{background:rgba(255,255,255,.16)!important;color:#fff!important}
+.hero .fbadge{background:var(--accent)!important;color:#fff!important}
+.hero .row{align-items:center}
+.kwrap .kchart{gap:12px}
+.kcard{background:var(--glass);border-radius:26px;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--bshadow)}
+.card .kcard{background:none;padding:0;box-shadow:none;border-radius:0}
+.kwrap .kcmp>div{border-radius:22px!important;box-shadow:var(--bshadow)!important;padding:14px!important}
+.card,.ktile{box-shadow:var(--bshadow)!important}.hero .ktile{box-shadow:none!important}
+.card{border-radius:26px!important}
+.seg{background:var(--glass)!important;border-radius:16px!important;padding:4px!important;box-shadow:var(--bshadow)!important}
+.card .seg{box-shadow:none!important;background:var(--glass2)!important}
+.seg button{border-radius:12px!important}
+.seg button[aria-pressed="true"]{background:var(--accent)!important;color:#fff!important}
+input[type=search]{border:0!important;border-radius:16px!important;box-shadow:var(--bshadow)!important}
+.pbar i{background:linear-gradient(90deg,#6a4fd8,var(--accent))!important}
+.nav{border-radius:26px!important;padding:8px 6px 7px!important;align-items:flex-end;box-shadow:0 10px 32px rgba(10,17,72,.24)!important}
+.nav button{min-height:0!important;border-radius:0!important;background:none!important;gap:3px;padding:4px 0}
+.nav button[aria-current="page"]{background:none!important;color:var(--accent)!important;font-weight:800}
+.nav button[data-act="fopen"]{flex:none;width:60px;height:60px;min-height:60px!important;margin:-26px 6px 8px;border-radius:50%!important;background:var(--accent)!important;color:#fff!important;justify-content:center;gap:0;font-size:0;box-shadow:0 8px 20px rgba(30,136,240,.45)!important;border:4px solid var(--glass)!important}
+.nav .fbadge{top:-6px;right:-6px;background:#ff7a3d!important;color:#fff!important;font-size:11px;border:2px solid var(--glass)}
+.fpanel.fpanel,.fpanel.fpB{border-radius:30px 30px 0 0!important}
+.switch[data-tab="bud"]{font-weight:600;font-size:14px}

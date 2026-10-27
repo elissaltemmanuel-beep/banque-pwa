@@ -174,9 +174,9 @@
     sum_=sum_.replace(/\.{2,}/g,'.');
     return '<div class="kchart">'+(poste?'<div class="row"><h3 style="font-size:14px">'+esc(title)+'</h3>'+badge+'</div>':'')+
       (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+(poste?'':KCMP)+
-      '<p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
+      '<div class="kcard"><p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
       ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 204" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>')+
-      '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div>'; }
+      '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div></div>'; }
 
   /* ---------- écrans ---------- */
   function syncNote(){ var s=D.sync; if(s&&s.error) return '<div class="card muted" style="font-size:13px;line-height:1.45"><b style="color:var(--text)">Lecture du dernier export impossible</b><br>'+esc(s.error)+'<br>Les chiffres viennent des opérations déjà importées.</div>'; return ''; }
@@ -230,9 +230,9 @@
         '<div class="kcmp">'+(dp!=null?'<div><span class="muted">Mois dernier</span><b>'+eur(prv)+'</b>'+kchip(dp,prv?dp/Math.abs(prv)*100:null,goodUp)+'</div>':'')+(da!=null?'<div><span class="muted">Moyenne</span><b>'+eur(avg)+'</b>'+kchip(da,avg?da/Math.abs(avg)*100:null,goodUp)+'</div>':'')+'</div>'+
         '<div class="note">'+(gm==='solde'?'Solde du compte courant':gm==='rev'?'Revenus, exceptionnels compris':'Exceptionnelles comprises')+', mouvements entre comptes exclus. '+(P_.cur?'Comparé au même jour du mois ; la moyenne porte sur les 12 derniers mois.':'La moyenne porte sur les 12 mois précédents.')+'</div></div>'; }
     KCMP=dep;
-    return '<div class="kwrap"><div class="ktiles">'+left+right+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+strip+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'<div class="ksep"></div>'+chartInner()+'</div>'; }
+    return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+right+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+strip+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
   function homeScreen(){
-    return header()+syncNote()+kpiCard()+
+    return kpiCard()+
     (revMode()?revSection():
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
   }
@@ -447,7 +447,7 @@
     var ol=mops?'<div class="row"><h3 style="font-size:16px">Opérations de '+esc(label)+' '+esc(P_.y)+'</h3></div><div class="card" style="padding:4px 14px">'+(mops.length?opsList(mops.map(function(x){return [x[0],key,x[2]||'—',-x[1],0]})):'<p class="muted" style="padding:14px 0">Aucune opération ce mois-ci pour ce marchand.</p>')+'</div>':'';
     return '<div class="mcard row" style="scroll-margin-top:12px"><h3 style="font-size:16px">Insights · '+esc(key)+'</h3><button class="back" data-msel="'+esc(key)+'" style="min-height:32px;font-size:12.5px">Fermer</button></div><div class="card">'+chartInner(fake)+'</div><div class="card ins">'+evo+(n?fh:'')+'</div>'+ol; }
   function detailScreen(){ var c=CATS.filter(function(x){return x.id===S.open})[0]; if(!c){ S.open=null; return homeScreen(); } var sbSel=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, s=status(c), tot=sum(CATS.map(function(x){return x.spent>0?x.spent:0})), share=tot>0&&c.spent>0? '<div style="text-align:right;line-height:1.15;flex:none"><div style="font-size:22px;font-weight:700;color:var(--accent)">'+Math.round(c.spent/tot*100)+' %</div><div class="muted" style="font-size:11.5px">des dépenses</div></div>' : '';
-    return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h2 style="font-size:22px">'+esc(c.n)+'</h2><span class="badge '+s.k+'">'+s.t+'</span></div>'+
+    return '<button class="back" data-act="close">'+ico(I.back)+'Accueil</button><div class="row"><h1 style="margin:0">'+esc(c.n)+'</h1><span class="badge '+s.k+'">'+s.t+'</span></div>'+
     '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div style="font-size:30px;font-weight:600">'+eur(c.spent)+'</div>'+share+'</div><div class="muted" style="font-size:13px;margin:2px 0 12px">sur une moyenne de '+eur(c.avg)+' ('+S.f.moy+' mois)</div>'+bar2(c)+'</div>'+'<div class="card">'+chartInner(c,sbSel)+'</div>'+(sbSel?'':'<div class="card list"><button class="switch" data-act="insp" aria-expanded="'+!!S.insP+'" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span>Insights du poste</span><span class="muted">'+(S.insP?'⌃':'⌄')+'</span></button></div>'+(S.insP?insightsCard(c):''))+
     '<h3 style="font-size:16px">Sous-postes</h3>'+compactCard(c.subs,true)+(sbSel?insightsCard(c,sbSel):'')+merchantCard()+
     (function(){ var sb=S.subSel?c.subs.filter(function(x){return x.n===S.subSel})[0]:null, src=sb?sb.ops:c.ops, lbl=sb?sb.n:c.n;
@@ -756,9 +756,13 @@
     if(S.tab==='plus') return S.sub==='bilan'?bilanScreen():S.sub==='epargne'?epargneScreen():S.sub==='rules'?rulesScreen():S.sub==='analyse'?analyseScreen():S.sub==='vacances'?vacScreen():S.sub==='rapport'?rapportScreen():plusScreen();
     return S.open? detailScreen() : homeScreen();
   }
+  function heroify(h){ if(h.indexOf('<div class="hero')===0||h.indexOf('class="rcover"')>-1||h.indexOf('<h1')<0) return h;
+    return h.replace(/^([\s\S]*?<\/h1>)((?:<span class="badge[^>]*>[^<]*<\/span>)?<\/div>)?/,function(m,a,b){ return '<div class="hero slim">'+a+(b||'')+'</div>'; }); }
+  function heroify(h){ if(h.indexOf('<div class="hero')===0||h.indexOf('class="rcover"')>-1||h.indexOf('<h1')<0) return h;
+    return h.replace(/^([\s\S]*?<\/h1>)((?:<span class="badge[^>]*>[^<]*<\/span>)?<\/div>)?/,function(m,a,b){ return '<div class="hero slim">'+a+(b||'')+'</div>'; }); }
   function render(){
     if(D) CATS=buildCats();
-    app.innerHTML='<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="screen fade" id="screen">'+screen()+'</div>'+(S.stage==='ready'?'<nav class="nav" aria-label="Navigation principale">'+TABS.map(function(x){ if(x[0]==='fopen'){ var nf=fcount(); return '<button data-act="fopen" style="position:relative" aria-label="Filtres'+(nf?', '+nf+' actif'+(nf>1?'s':''):'')+'">'+ico(x[2])+x[1]+(nf?'<span class="fbadge">'+nf+'</span>':'')+'</button>'; } return '<button data-tab="'+x[0]+'"'+(x[0]===S.tab?' aria-current="page"':'')+'>'+ico(x[2])+x[1]+'</button>'}).join('')+'</nav>':'');
+    app.innerHTML='<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="screen fade" id="screen">'+heroify(screen())+'</div>'+(S.stage==='ready'?'<nav class="nav" aria-label="Navigation principale">'+TABS.map(function(x){ if(x[0]==='fopen'){ var nf=fcount(); return '<button data-act="fopen" style="position:relative" aria-label="Filtres'+(nf?', '+nf+' actif'+(nf>1?'s':''):'')+'">'+ico(x[2])+x[1]+(nf?'<span class="fbadge">'+nf+'</span>':'')+'</button>'; } return '<button data-tab="'+x[0]+'"'+(x[0]===S.tab?' aria-current="page"':'')+'>'+ico(x[2])+x[1]+'</button>'}).join('')+'</nav>':'');
     app.querySelectorAll('.hscroll').forEach(function(h){ h.scrollLeft=(S.hsKey===h.dataset.hs&&S.hsPos!=null)?S.hsPos:h.scrollWidth; });
     requestAnimationFrame(function(){requestAnimationFrame(function(){ app.querySelectorAll('.bar i,.strack i,.pvis i,.pbar i').forEach(function(el){el.style.width=el.dataset.w+'%'}); }); });
     var b=document.getElementById('bal'); if(b&&D&&!reduce&&!S.hide&&S.first){ var t0=performance.now(); (function tick(n){var k=Math.min((n-t0)/900,1),e=1-Math.pow(1-k,3);b.textContent=eur(D.solde*e);if(k<1)requestAnimationFrame(tick)})(t0); }
