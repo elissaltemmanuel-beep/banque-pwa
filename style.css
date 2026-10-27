@@ -465,3 +465,8 @@ input[type=search]{border:0!important;border-radius:16px!important;box-shadow:va
 .hbal .bl1{display:flex;flex-direction:column;line-height:1.25;font-size:12.5px;color:rgba(255,255,255,.68);font-weight:500}
 .hbal .sm{font-size:11px;color:rgba(255,255,255,.62)}
 .hbal .bv{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.hbal .neg{color:#ffb4ad}.hbal .pos{color:#8ee6bb}
+/* badges du haut bleu : légèrement transparents */
+.hero .kchip.good{background:rgba(80,210,150,.22)!important;color:#8ee6bb!important}
+.hero .kchip.bad{background:rgba(255,128,120,.22)!important;color:#ffb4ad!important}
+.hero .kchip.eq{background:rgba(255,255,255,.14)!important;color:#fff!important}
+.seg button{font-weight:700}
