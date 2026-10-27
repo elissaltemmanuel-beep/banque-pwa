@@ -498,3 +498,4 @@ h2,h3{font-size:17px;font-weight:700}
 .hero .fresh b{color:#fff}
 .hero .fresh.warn{background:rgba(255,176,46,.18);color:#ffd48a;border-radius:14px;padding:8px 12px}.hero .fresh.warn b{color:#ffe3b0}
 .hero .fresh.bad{background:rgba(255,128,120,.22);color:#ffd0cb;border-radius:14px;padding:8px 12px}.hero .fresh.bad b{color:#fff}
+button.fresh{display:block;width:100%;border:0;text-align:left;font:inherit;font-size:12px;cursor:pointer}

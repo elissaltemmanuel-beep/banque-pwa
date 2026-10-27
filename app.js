@@ -199,7 +199,7 @@
   function freshLine(){ var sy=(D&&D.sync)||{}, out='', ck=sy.check;
     if(ck&&ck.ok===false) out+='<div class="fresh bad" role="alert"><b>Le solde ne correspond pas au dernier export.</b> L’appli affiche '+eur(ck.appBal)+' au '+esc(fmtDate(ck.appDate))+', le dernier export ('+esc(ck.file)+') indique '+eur(ck.fileBal)+' au '+esc(fmtDate(ck.fileDate))+'. Touchez la flèche Actualiser, ou Plus &gt; Relire le dossier.</div>';
     if(S.refreshing) out+='<div class="fresh">Vérification du dossier d’export…</div>';
-    else if(S.stale) out+='<div class="fresh warn" role="status"><b>Dossier non vérifié.</b> Ces chiffres datent de la dernière synchronisation'+(sy.checkedAt?' ('+esc(dayHm(sy.checkedAt))+')':'')+'. Touchez la flèche Actualiser pour relire le dossier.</div>';
+    else if(S.stale) out+='<button class="fresh warn" data-act="refresh" role="status"><b>Dossier non vérifié.</b> Ces chiffres datent de la dernière synchronisation'+(sy.checkedAt?' ('+esc(dayHm(sy.checkedAt))+')':'')+(S.silentErr?' · '+esc(S.silentErr):'')+'. <b>Touchez ici</b> pour relire le dossier (Google peut demander une confirmation).</button>';
     else if(sy.newest&&sy.newest.modified) out+='<div class="fresh">Dernier export lu : déposé le '+esc(dayHm(sy.newest.modified))+(sy.checkedAt?' · dossier vérifié à '+esc(hm(sy.checkedAt)):'')+'.</div>';
     return out; }
   function landDetail(L){ function r(l,v,cls){ return '<div class="row" style="font-size:13px;padding:5px 0"><span class="muted">'+l+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+v+'</b></div>'; }
@@ -901,9 +901,9 @@
   function errMsg(e){ return (e&&e.message)?e.message:String(e); }
   function run(fn,args){ return API[fn].apply(null,args||[]); }
   function load(keep){ if(!keep){ S.loading=true; S.error=null; render(); }
-    return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; S.stale=false; S.lastCheck=Date.now(); render(); }).catch(function(err){ S.loading=false; if(D){ S.stale=true; S.refreshErr=errMsg(err); } else if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
+    return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; S.stale=false; S.silentErr=null; S.lastCheck=Date.now(); render(); }).catch(function(err){ S.loading=false; if(D){ S.stale=true; S.refreshErr=errMsg(err); } else if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
   function withTimeout(p,ms){ return new Promise(function(res,rej){ var t=setTimeout(function(){rej(new Error('délai dépassé'))},ms); p.then(function(v){clearTimeout(t);res(v)},function(e){clearTimeout(t);rej(e)}); }); }
-  function refresh(interactive){ S.refreshing=true; S.lastCheck=Date.now(); render(); return withTimeout(API.signIn(interactive),interactive?120000:8000).then(function(){ S.refreshErr=null; return load(true); }).then(function(){ S.refreshing=false; render(); }).catch(function(e){ S.refreshing=false; S.stale=true; S.refreshErr=interactive?errMsg(e):null; render(); }); }
+  function refresh(interactive){ S.refreshing=true; S.lastCheck=Date.now(); render(); return withTimeout(API.signIn(interactive),interactive?120000:8000).then(function(){ S.refreshErr=null; return load(true); }).then(function(){ S.refreshing=false; render(); }).catch(function(e){ S.refreshing=false; S.stale=true; S.refreshErr=interactive?errMsg(e):null; S.silentErr=interactive?null:errMsg(e); render(); }); }
   function openApp(){ var c=API.cached();
     if(c){ setData(c); S.stage='ready'; S.loading=false; S.error=null; S.stale=true; render(); return refresh(false); }
     return enter(); }
