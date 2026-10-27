@@ -232,7 +232,10 @@
           }
           parsed.sort(function (a, b) {
             var da = a.rows[a.rows.length - 1][0], db = b.rows[b.rows.length - 1][0];
-            return da === db ? b.rows.length - a.rows.length : (da < db ? 1 : -1);
+            if (da !== db) return da < db ? 1 : -1;
+            // même dernière date : le fichier déposé en dernier fait foi (il contient les opérations les plus récentes), pas le plus long
+            var ma = String(a.f.modifiedTime || ''), mb = String(b.f.modifiedTime || '');
+            return ma === mb ? b.rows.length - a.rows.length : (ma < mb ? 1 : -1);
           });
           var base = parsed[0];
           info.fileName = base.f.name; info.fileDate = base.f.modifiedTime.slice(0, 10);
