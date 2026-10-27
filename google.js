@@ -206,11 +206,12 @@
       // les autres n'apportent que de l'historique plus ancien
       var sig = files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(',');
       return readOps(id).then(function (existing) {
-        var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10) };
+        var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10), newest: { name: f0.name, modified: f0.modifiedTime }, checkedAt: new Date().toISOString() };
+        store('banque-checked', info.checkedAt);
         if (!force && load('banque-sig') === sig && existing.length) {
           // le fichier de base (le plus récent par ses dates) n'est pas forcément le dernier modifié
           try { var b0 = JSON.parse(load('banque-base') || 'null'); if (b0 && b0.n) { info.fileName = b0.n; info.fileDate = b0.d; } } catch (e) {}
-          info.skipped = true; info.lastSync = load('banque-last'); return { info: info, rows: existing }; }
+          info.skipped = true; info.lastSync = load('banque-last'); try { info.check = JSON.parse(load('banque-check') || 'null'); } catch (e) {} return { info: info, rows: existing }; }
         var parsed = [], lastErr = null;
         return files.reduce(function (p, f) {
           return p.then(function () {
@@ -230,17 +231,12 @@
               return { info: info, rows: existing };
             });
           }
-          parsed.sort(function (a, b) {
-            var da = a.rows[a.rows.length - 1][0], db = b.rows[b.rows.length - 1][0];
-            if (da !== db) return da < db ? 1 : -1;
-            // même dernière date : le fichier déposé en dernier fait foi (il contient les opérations les plus récentes), pas le plus long
-            var ma = String(a.f.modifiedTime || ''), mb = String(b.f.modifiedTime || '');
-            return ma === mb ? b.rows.length - a.rows.length : (ma < mb ? 1 : -1);
-          });
+          parsed = sortBases_(parsed);
           var base = parsed[0];
           info.fileName = base.f.name; info.fileDate = base.f.modifiedTime.slice(0, 10);
           var res = mergeIncremental(existing, base.rows, today(), parseInt(cfg.OVERLAP_DAYS, 10) || 45), rows = res.rows, history = 0;
           parsed.slice(1).forEach(function (p) { var h = mergeHistory(rows, p.rows); rows = h.rows; history += h.added; });
+          info.check = balanceCheck_(rows, parsed); store('banque-check', JSON.stringify(info.check));
           return writeRange(id, 'Operations', 14, rows).then(function () {
             return otherRows.length ? ensureSheet(id, 'Epargne', COLS).then(function () { return writeRange(id, 'Epargne', 14, otherRows); }) : null;
           }).then(function () {

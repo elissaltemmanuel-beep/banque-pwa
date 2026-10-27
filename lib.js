@@ -129,6 +129,32 @@ function mergeIncremental(existing, incoming, todayIso, overlapDays) {
  * Export plus ancien (complément d'historique) : on ne garde que ses opérations antérieures
  * à la première date déjà connue, sans toucher à l'existant.
  */
+/**
+ * Choix de l'export de base : dernière date des opérations d'abord ; à égalité, le fichier déposé en dernier
+ * (modifiedTime) fait foi, puis le plus long.
+ */
+function sortBases_(parsed) {
+  return parsed.slice().sort(function (a, b) {
+    var da = a.rows[a.rows.length - 1][0], db = b.rows[b.rows.length - 1][0];
+    if (da !== db) return da < db ? 1 : -1;
+    var ma = String(a.f.modifiedTime || ''), mb = String(b.f.modifiedTime || '');
+    if (ma !== mb) return ma < mb ? 1 : -1;
+    return b.rows.length - a.rows.length;
+  });
+}
+
+/**
+ * Rapprochement : la dernière opération de l'export déposé en dernier doit se retrouver, avec le même solde,
+ * à la fin des opérations gardées. ok = false => l'appli n'affiche pas ce que dit le dernier export.
+ */
+function balanceCheck_(rows, parsed) {
+  if (!rows.length || !parsed.length) return null;
+  var newest = parsed.slice().sort(function (a, b) { return String(a.f.modifiedTime || '') < String(b.f.modifiedTime || '') ? 1 : -1; })[0];
+  var nl = newest.rows[newest.rows.length - 1], fl = rows[rows.length - 1];
+  var same = nl[0] === fl[0] && Math.abs((+nl[11]) - (+fl[11])) < 0.005;
+  return { ok: nl[0] < fl[0] || same, file: newest.f.name, fileDate: nl[0], fileBal: nl[11], appDate: fl[0], appBal: fl[11] };
+}
+
 function mergeHistory(existing, incoming) {
   if (!existing.length) return { rows: incoming, added: incoming.length };
   var first = existing[0][0];
@@ -738,7 +764,7 @@ function livret_(rows, todayIso, L) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory, splitAccounts_: splitAccounts_, savingsSummary_: savingsSummary_,
+  module.exports = { sortBases_: sortBases_, balanceCheck_: balanceCheck_, COLS: COLS, toStorageRows: toStorageRows, mergeIncremental: mergeIncremental, mergeHistory: mergeHistory, splitAccounts_: splitAccounts_, savingsSummary_: savingsSummary_,
     aggregate: aggregate, vacances_: vacances_, addDays_: addDays_, parseNumber_: parseNumber_ };
 }
 

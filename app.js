@@ -193,6 +193,15 @@
 
   /* ---------- écrans ---------- */
   function syncNote(){ var s=D.sync; if(s&&s.error) return '<div class="card muted" style="font-size:13px;line-height:1.45"><b style="color:var(--text)">Lecture du dernier export impossible</b><br>'+esc(s.error)+'<br>Les chiffres viennent des opérations déjà importées.</div>'; return ''; }
+  /* garde-fous de fraîcheur : quel export est lu, vérifié quand, et rapprochement du solde avec le dernier export */
+  function hm(iso){ try{ return new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}).replace(':',' h '); }catch(e){ return ''; } }
+  function dayHm(iso){ try{ var d=new Date(iso); return d.getDate()+' '+MOIS_C[d.getMonth()]+' à '+hm(iso); }catch(e){ return ''; } }
+  function freshLine(){ var sy=(D&&D.sync)||{}, out='', ck=sy.check;
+    if(ck&&ck.ok===false) out+='<div class="fresh bad" role="alert"><b>Le solde ne correspond pas au dernier export.</b> L’appli affiche '+eur(ck.appBal)+' au '+esc(fmtDate(ck.appDate))+', le dernier export ('+esc(ck.file)+') indique '+eur(ck.fileBal)+' au '+esc(fmtDate(ck.fileDate))+'. Touchez la flèche Actualiser, ou Plus &gt; Relire le dossier.</div>';
+    if(S.refreshing) out+='<div class="fresh">Vérification du dossier d’export…</div>';
+    else if(S.stale) out+='<div class="fresh warn" role="status"><b>Dossier non vérifié.</b> Ces chiffres datent de la dernière synchronisation'+(sy.checkedAt?' ('+esc(dayHm(sy.checkedAt))+')':'')+'. Touchez la flèche Actualiser pour relire le dossier.</div>';
+    else if(sy.newest&&sy.newest.modified) out+='<div class="fresh">Dernier export lu : déposé le '+esc(dayHm(sy.newest.modified))+(sy.checkedAt?' · dossier vérifié à '+esc(hm(sy.checkedAt)):'')+'.</div>';
+    return out; }
   function landDetail(L){ function r(l,v,cls){ return '<div class="row" style="font-size:13px;padding:5px 0"><span class="muted">'+l+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+v+'</b></div>'; }
     return '<div style="border-top:1px solid var(--rim-soft);padding:8px 16px 14px">'+
       r('Solde actuel',eur(D.solde))+
@@ -246,7 +255,7 @@
     KCMP=dep;
     var BR=''; (function(){ var Pm=per(), key=Pm.isYear?D.today.month:Pm.key, cur=key===D.today.month, o=SA.filter(function(x){return x.k===key})[0], v=cur?(D.proj.revEnd-D.proj.depEnd):(o?o.rev-o.dep:null); if(v==null||isNaN(v)) return;
       var m=MOIS_L[+key.slice(5,7)-1]; BR='<div class="hbal"><span class="bl1"><span>Balance '+(/^[aeiouhéàâêîôû]/.test(m)?'d’':'de ')+m+(cur?'':' '+key.slice(0,4))+'</span><span class="sm">'+(cur?'projection de fin de mois':'balance finale')+'</span></span><b class="bv '+(v<0?'neg':'pos')+'">'+(v<0?'−':'+')+eur(Math.abs(v))+'</b></div>'; })();
-    return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+'<span class="hsep"></span>'+right+strip+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+BR+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
+    return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+'<span class="hsep"></span>'+right+strip+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+BR+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
   function homeScreen(){
     return kpiCard()+
     (revMode()?revSection():
@@ -892,9 +901,9 @@
   function errMsg(e){ return (e&&e.message)?e.message:String(e); }
   function run(fn,args){ return API[fn].apply(null,args||[]); }
   function load(keep){ if(!keep){ S.loading=true; S.error=null; render(); }
-    return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; S.stale=false; render(); }).catch(function(err){ S.loading=false; if(D){ S.stale=true; S.refreshErr=errMsg(err); } else if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
+    return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; S.stale=false; S.lastCheck=Date.now(); render(); }).catch(function(err){ S.loading=false; if(D){ S.stale=true; S.refreshErr=errMsg(err); } else if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
   function withTimeout(p,ms){ return new Promise(function(res,rej){ var t=setTimeout(function(){rej(new Error('délai dépassé'))},ms); p.then(function(v){clearTimeout(t);res(v)},function(e){clearTimeout(t);rej(e)}); }); }
-  function refresh(interactive){ S.refreshing=true; render(); return withTimeout(API.signIn(interactive),interactive?120000:8000).then(function(){ S.refreshErr=null; return load(true); }).then(function(){ S.refreshing=false; render(); }).catch(function(e){ S.refreshing=false; S.stale=true; S.refreshErr=interactive?errMsg(e):null; render(); }); }
+  function refresh(interactive){ S.refreshing=true; S.lastCheck=Date.now(); render(); return withTimeout(API.signIn(interactive),interactive?120000:8000).then(function(){ S.refreshErr=null; return load(true); }).then(function(){ S.refreshing=false; render(); }).catch(function(e){ S.refreshing=false; S.stale=true; S.refreshErr=interactive?errMsg(e):null; render(); }); }
   function openApp(){ var c=API.cached();
     if(c){ setData(c); S.stage='ready'; S.loading=false; S.error=null; S.stale=true; render(); return refresh(false); }
     return enter(); }
@@ -914,6 +923,7 @@
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){ hiddenAt=Date.now(); }
     else if(hiddenAt&&Lock.enabled()&&Date.now()-hiddenAt>60000&&S.stage==='ready'){ S.stage='lock'; S.fopen=false; render(); doUnlock(); }
+    else if(S.stage==='ready'&&!S.refreshing&&Date.now()-(S.lastCheck||0)>120000){ refresh(false); }   /* retour sur l'appli : on relit le dossier si la dernière vérification a plus de 2 minutes */
   });
   if('serviceWorker' in navigator){ var hadCtl=!!navigator.serviceWorker.controller, reloaded=false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){ if(!hadCtl||reloaded) return; reloaded=true; location.reload(); });
