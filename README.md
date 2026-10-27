@@ -21,6 +21,7 @@ le téléphone.
 | `lock.js` | Verrouillage par empreinte |
 | `config.js` | Identifiant OAuth et noms (feuille, dossier) |
 | `sw.js`, `manifest.webmanifest`, `icon-*.png` | Installation et mode hors ligne |
+| `fonts/sora-latin.woff2` | Police Sora embarquée (autorisée par la CSP de `index.html`, mise en cache hors ligne) |
 
 ## Mise en route (une seule fois)
 
