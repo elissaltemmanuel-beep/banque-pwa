@@ -107,13 +107,13 @@
     function upn(x){ return x.c.upc>0&&per().cur? '<small class="muted" style="display:block;font-size:10.5px;font-weight:500;line-height:1.2">dont '+eur(x.c.upc)+' à venir</small>' : ''; }
     var items=cats.map(info), body;
     var tot=sum(list.map(function(c){return c.spent>0?c.spent:0})), mx=Math.max.apply(null,items.map(function(x){return x.c.spent}).concat([1]));
-    function small(x){ return ecarts? (x.c.fixed?'fixe ':'attendu ')+'<b>'+eur(x.e)+'</b>' : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
+    function small(x){ return ecarts? (x.c.fixed?'fixe ':'')+eur(x.e) : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
     function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>'+(x.e>0?' <small class="'+x.k+'t" style="font-size:11.5px;font-weight:600">('+(x.pos?'+':'−')+Math.round(Math.abs(x.d)/x.e*100)+' %)</small>':'')) : eur(x.c.spent); }
     function vis(x){
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
       return '<span class="pvis dep"><i data-w="'+(tot>0?Math.max(x.c.spent,0)/tot*100:0).toFixed(1)+'"></i></span>'; }
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
-    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' data-ssel="'+esc(x.c.n)+'" aria-pressed="'+(S.subSel===x.c.n)+'"':' data-open="'+esc(flat?x.c.pid:x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+(flat?'<small class="muted" style="font-size:11px;font-weight:500"> · '+esc(x.c.par)+'</small>'+(function(){ var t=topOf(x.c.par,x.c.n,1)[0]; return t?'<small class="muted" style="display:block;font-size:11px;font-weight:500;line-height:1.2">'+esc(t[0])+' · '+eur(t[1])+'</small>':''; })():'')+upn(x)+'</span><span class="psm'+(ecarts?'':' pct')+'">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
+    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' data-ssel="'+esc(x.c.n)+'" aria-pressed="'+(S.subSel===x.c.n)+'"':' data-open="'+esc(flat?x.c.pid:x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop'+(ecarts?' ec':'')+'"><span class="pnm">'+esc(x.c.n)+(flat?'<small class="muted" style="font-size:11px;font-weight:500"> · '+esc(x.c.par)+'</small>'+(function(){ var t=topOf(x.c.par,x.c.n,1)[0]; return t?'<small class="muted" style="display:block;font-size:11px;font-weight:500;line-height:1.2">'+esc(t[0])+' · '+eur(t[1])+'</small>':''; })():'')+upn(x)+'</span><span class="psm'+(ecarts?'':' pct')+'">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
     return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+(sub?'':'<div class="switch"><span>Détailler par enseigne</span><button class="tog" data-act="lvl" aria-pressed="'+flat+'" aria-label="Détailler par enseigne"></button></div>')+
       (ecarts?'<p class="gapl muted" style="text-align:center;margin:2px 0 4px">À gauche : sous la moyenne · à droite : au-dessus</p>':'')+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
       '</div>'; }
@@ -819,11 +819,14 @@
     return h.replace(/^([\s\S]*?<\/h1>)((?:<span class="badge[^>]*>[^<]*<\/span>)?<\/div>)?/,function(m,a,b){ return '<div class="hero slim">'+a+(b||'')+'</div>'; }); }
   function heroify(h){ if(h.indexOf('<div class="hero')===0||h.indexOf('class="rcover"')>-1||h.indexOf('<h1')<0) return h;
     return h.replace(/^([\s\S]*?<\/h1>)((?:<span class="badge[^>]*>[^<]*<\/span>)?<\/div>)?/,function(m,a,b){ return '<div class="hero slim">'+a+(b||'')+'</div>'; }); }
+  var lastView;   /* écran affiché au dernier rendu : le fondu ne joue que quand on change d'écran, pas quand les chiffres se rafraîchissent */
   function render(){
     if(D) CATS=buildCats();
-    app.innerHTML='<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="screen fade" id="screen">'+heroify(screen())+'</div>'+(S.stage==='ready'?'<nav class="nav" aria-label="Navigation principale">'+TABS.map(function(x){ if(x[0]==='fopen'){ var nf=fcount(); return '<button data-act="fopen" style="position:relative" aria-label="Filtres'+(nf?', '+nf+' actif'+(nf>1?'s':''):'')+'">'+ico(x[2])+x[1]+(nf?'<span class="fbadge">'+nf+'</span>':'')+'</button>'; } return '<button data-tab="'+x[0]+'"'+(x[0]===S.tab?' aria-current="page"':'')+'>'+ico(x[2])+x[1]+'</button>'}).join('')+'</nav>':'');
+    var vk=[S.stage,S.tab,S.sub,S.open,S.loading,!!S.error].join('|'), fx=lastView!==undefined&&vk!==lastView; lastView=vk;
+    app.innerHTML='<div class="orbs" aria-hidden="true"><i class="o1"></i><i class="o2"></i><i class="o3"></i></div><div class="screen'+(fx?' fade':'')+'" id="screen">'+heroify(screen())+'</div>'+(S.stage==='ready'?'<nav class="nav" aria-label="Navigation principale">'+TABS.map(function(x){ if(x[0]==='fopen'){ var nf=fcount(); return '<button data-act="fopen" style="position:relative" aria-label="Filtres'+(nf?', '+nf+' actif'+(nf>1?'s':''):'')+'">'+ico(x[2])+x[1]+(nf?'<span class="fbadge">'+nf+'</span>':'')+'</button>'; } return '<button data-tab="'+x[0]+'"'+(x[0]===S.tab?' aria-current="page"':'')+'>'+ico(x[2])+x[1]+'</button>'}).join('')+'</nav>':'');
     app.querySelectorAll('.hscroll').forEach(function(h){ h.scrollLeft=(S.hsKey===h.dataset.hs&&S.hsPos!=null)?S.hsPos:h.scrollWidth; });
-    requestAnimationFrame(function(){requestAnimationFrame(function(){ app.querySelectorAll('.bar i,.strack i,.pvis i,.pbar i').forEach(function(el){el.style.width=el.dataset.w+'%'}); }); });
+    var fill=function(){ app.querySelectorAll('.bar i,.strack i,.pvis i,.pbar i').forEach(function(el){ if(!(fx&&!reduce)) el.style.transition='none'; el.style.width=el.dataset.w+'%'; }); };
+    if(fx&&!reduce) requestAnimationFrame(function(){requestAnimationFrame(fill)}); else fill();
     var b=document.getElementById('bal'); if(b&&D&&!reduce&&!S.hide&&S.first){ var t0=performance.now(); (function tick(n){var k=Math.min((n-t0)/900,1),e=1-Math.pow(1-k,3);b.textContent=eur(D.solde*e);if(k<1)requestAnimationFrame(tick)})(t0); }
     if(D) S.first=false;
     paintPanel();
@@ -932,15 +935,19 @@
   function load(keep){ if(!keep){ S.loading=true; S.error=null; render(); }
     return run('getDashboard').then(function(d){ setData(d); S.loading=false; S.error=null; S.stale=false; S.silentErr=null; S.lastCheck=Date.now(); render(); }).catch(function(err){ S.loading=false; if(D){ S.stale=true; S.refreshErr=errMsg(err); } else if(err&&err.status===401){ S.stage='signin'; S.error=null; } else S.error=errMsg(err); render(); }); }
   function withTimeout(p,ms){ return new Promise(function(res,rej){ var t=setTimeout(function(){rej(new Error('délai dépassé'))},ms); p.then(function(v){clearTimeout(t);res(v)},function(e){clearTimeout(t);rej(e)}); }); }
-  function refresh(interactive){ S.refreshing=true; S.lastCheck=Date.now(); render(); return withTimeout(API.signIn(interactive),interactive?120000:8000).then(function(){ S.refreshErr=null; return load(true); }).then(function(){ S.refreshing=false; render(); }).catch(function(e){ S.refreshing=false; S.stale=true; S.refreshErr=interactive?errMsg(e):null; S.silentErr=interactive?null:errMsg(e); render(); }); }
+  function spinBtn(on){ var b=app.querySelector('[data-act="refresh"]'); if(b) b.classList.toggle('spin',on); }
+  function refresh(interactive){ S.refreshing=true; S.lastCheck=Date.now(); spinBtn(true);
+    var tok=withTimeout(API.signIn(false),interactive?4000:8000).catch(function(e){ if(!interactive) throw e; return withTimeout(API.signIn(true),120000); });
+    return tok.then(function(){ S.refreshErr=null; S.refreshing=false; return load(true); }).catch(function(e){ S.refreshing=false; S.stale=true; S.refreshErr=interactive?errMsg(e):null; S.silentErr=interactive?null:errMsg(e); render(); }); }
   function openApp(){ var c=API.cached();
-    if(c){ setData(c); S.stage='ready'; S.loading=false; S.error=null; S.stale=true; render(); return refresh(false); }
+    if(c){ setData(c); S.stage='ready'; S.loading=false; S.error=null; S.stale=true; S.first=false; render(); return refresh(false); }
     return enter(); }
   function enter(){ S.stage='ready'; S.loading=true; render();
     return API.signIn(false).then(function(){ return load(true); }).catch(function(){ S.loading=false; S.stage='signin'; render(); }); }
   function doUnlock(){ if(S.lockBusy) return; S.lockBusy=true;
     Lock.unlock().then(function(){ S.lockBusy=false; S.lockOk=true; openApp(); }).catch(function(){ S.lockBusy=false; S.stage='lock'; render(); }); }
   function boot(){
+    API.prewarm();   /* le jeton Google se renouvelle pendant que l'écran s'affiche */
     S.error=null; S.lockOk=false;
     Lock.supported().then(function(ok){ S.lockAvail=ok; });
     if(Lock.enabled()){ S.stage='lock'; render(); doUnlock(); }

@@ -18,16 +18,24 @@
       var n = 0;
       (function wait() {
         if (window.google && google.accounts && google.accounts.oauth2) return res();
-        if (++n > 100) return rej(new Error('Le service de connexion Google n\'a pas pu être chargé.'));
-        setTimeout(wait, 100);
+        if (++n > 400) return rej(new Error('Le service de connexion Google n\'a pas pu être chargé.'));
+        setTimeout(wait, 25);
       })();
     });
   }
 
   /** interactive=true : à appeler depuis un appui sur un bouton. false : tentative silencieuse. */
+  var pending = null;   // demande de jeton en cours : les appels simultanés (préchauffage + actualisation) la partagent
   function signIn(interactive) {
     if (token && Date.now() < expires - 60000) return Promise.resolve(token);
     if (!CFG.CLIENT_ID) return Promise.reject(new Error('Identifiant Google manquant : renseignez CLIENT_ID dans config.js.'));
+    if (pending && !interactive) return pending;
+    var p = signIn_(interactive);
+    pending = p; var done = function () { if (pending === p) pending = null; };
+    p.then(done, done);
+    return p;
+  }
+  function signIn_(interactive) {
     return gis().then(function () {
       return new Promise(function (res, rej) {
         if (!client) {
@@ -46,7 +54,7 @@
 
   function signOut() {
     var t = token; token = null; expires = 0; sheetId = null;
-    ['banque-signed', 'banque-sheet', 'banque-sig', 'banque-base', 'banque-cache'].forEach(function (k) { store(k, null); });
+    ['banque-signed', 'banque-sheet', 'banque-sig', 'banque-base', 'banque-cache', 'banque-folder', 'banque-rf'].forEach(function (k) { store(k, null); });
     try { if (t && window.google && google.accounts) google.accounts.oauth2.revoke(t, function () {}); } catch (e) {}
   }
 
@@ -108,27 +116,19 @@
     });
   }
 
-  function readConfig(id) {
-    return readRange(id, 'Config!A2:B100').then(function (v) {
-      var m = {}; v.forEach(function (r) { if (r[0]) m[String(r[0])] = String(r[1] == null ? '' : r[1]); });
-      return m;
-    });
+  function cfgOf(v) { var m = {}; v.forEach(function (r) { if (r[0]) m[String(r[0])] = String(r[1] == null ? '' : r[1]); }); return m; }
+  function budgetsOf(v) { var m = {}; v.forEach(function (r) { var n = Number(r[1]); if (r[0] && n > 0) m[String(r[0])] = n; }); return m; }
+  function rulesOf(v) {
+    return v.filter(function (r) { return r[0] && r[1]; }).map(function (r) { return { motif: String(r[0]), poste: String(r[1]), sous: String(r[2] || ''), montant: r[3] === '' || r[3] == null ? '' : Number(r[3]) || '' }; });
   }
-  function readBudgets(id) {
-    return readRange(id, 'Budgets!A2:B500').then(function (v) {
-      var m = {}; v.forEach(function (r) { var n = Number(r[1]); if (r[0] && n > 0) m[String(r[0])] = n; });
-      return m;
-    });
-  }
-  function readRules(id) {
-    return readRange(id, 'Regles!A2:D500').then(function (v) {
-      return v.filter(function (r) { return r[0] && r[1]; }).map(function (r) { return { motif: String(r[0]), poste: String(r[1]), sous: String(r[2] || ''), montant: r[3] === '' || r[3] == null ? '' : Number(r[3]) || '' }; });
-    });
-  }
+  function readConfig(id) { return readRange(id, 'Config!A2:B100').then(cfgOf); }
+  function readBudgets(id) { return readRange(id, 'Budgets!A2:B500').then(budgetsOf); }
+  function readRules(id) { return readRange(id, 'Regles!A2:D500').then(rulesOf); }
   /** Règles écrites dans le fichier « Banque-regles.txt » du Drive (une par ligne : texte ; poste ; sous-poste ; montant). */
   function readRulesFile() {
     return driveList("name='Banque-regles.txt' and trashed=false").then(function (f) {
       if (!f.length) return { rules: [], fixes: [], sejours: [], info: 'absent' };
+      try { var m = JSON.parse(load('banque-rf') || 'null'); if (m && m.id === f[0].id && m.mt === f[0].modifiedTime && m.v) return m.v; } catch (e) {}   // fichier inchangé : pas de nouvelle lecture
       return call(DRIVE + '/files/' + f[0].id + '?alt=media').then(function (r) { return r.text(); }).then(function (txt) {
         var out = [], fixes = [], sejours = [], livret = null;
         txt.replace(/^\uFEFF/, '').split(/\r?\n/).forEach(function (line) {
@@ -151,7 +151,9 @@
           }
           out.push({ motif: p[0], poste: p[1], sous: p[2] || '', montant: p[3] ? Number(String(p[3]).replace(',', '.').replace(/[^0-9.]/g, '')) || '' : '', fichier: true });
         });
-        return { rules: out, fixes: fixes, sejours: sejours, livret: livret, info: 'ok' };
+        var v = { rules: out, fixes: fixes, sejours: sejours, livret: livret, info: 'ok' };
+        store('banque-rf', JSON.stringify({ id: f[0].id, mt: f[0].modifiedTime, v: v }));
+        return v;
       });
     }).catch(function (e) { if (e.status === 401) throw e; return { rules: [], fixes: [], sejours: [], info: 'erreur : ' + (e.message || e) }; });
   }
@@ -197,15 +199,17 @@
 
   // ------------------------------------------------------------- import
   var SYNC_V = 'v3';
+  function sigOf(files) { return SYNC_V + '#' + files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(','); }
   function syncIfNewFile(id, cfg, force) {
     return driveList("mimeType='application/vnd.google-apps.folder' and name='" + esc(cfg.FOLDER_NAME || CFG.FOLDER_NAME) + "' and trashed=false").then(function (fo) {
       if (!fo.length) throw new Error('Dossier « ' + (cfg.FOLDER_NAME || CFG.FOLDER_NAME) + ' » introuvable dans votre Drive.');
+      store('banque-folder', JSON.stringify({ name: cfg.FOLDER_NAME || CFG.FOLDER_NAME, id: fo[0].id }));   // mémo : l'actualisation saute la recherche du dossier
       return driveList("'" + fo[0].id + "' in parents and trashed=false and name contains '.csv'");
     }).then(function (files) {
       if (!files.length) throw new Error('Aucun fichier .csv dans le dossier d\'export.');
       // tous les CSV du dossier comptent : l'export le plus récent (par dernière date) sert de base,
       // les autres n'apportent que de l'historique plus ancien
-      var sig = SYNC_V + '#' + files.map(function (x) { return x.id + '|' + x.modifiedTime; }).sort().join(',');   // SYNC_V : à incrémenter quand la logique de fusion change, pour forcer une relecture complète au prochain passage
+      var sig = sigOf(files);   // SYNC_V : à incrémenter quand la logique de fusion change, pour forcer une relecture complète au prochain passage
       return readOps(id).then(function (existing) {
         var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10), newest: { name: f0.name, modified: f0.modifiedTime }, checkedAt: new Date().toISOString() };
         store('banque-checked', info.checkedAt);
@@ -251,18 +255,46 @@
     });
   }
 
+  function build(cfg, sync, rows, rules, rf, epRows, budgets) {
+    var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(rf.rules), exportDate: sync && sync.fileDate, sejours: rf.sejours || [], livret: rf.livret });
+    data.sync = sync; data.rules = rules; data.fileRules = rf.rules; data.fileRulesInfo = rf.info; data.fixes = rf.fixes || []; data.epargne = savingsSummary_(epRows, today()); data.budgets = budgets;
+    return data;
+  }
+
+  /** Actualisation sans rien de nouveau dans le dossier : toutes les lectures partent en même temps (une seule attente réseau),
+   *  au lieu d'une quinzaine d'appels enchaînés. Renvoie null si un import est nécessaire : le chemin complet prend alors le relais. */
+  function fastCompute() {
+    var hint = null; try { hint = JSON.parse(load('banque-folder') || 'null'); } catch (e) {}
+    if (!hint || !hint.id || !load('banque-sig') || !load('banque-check')) return Promise.resolve(null);
+    return findSheet().then(function (id) {
+      return Promise.all([
+        readRange(id, 'Config!A2:B100'), readOps(id), readRange(id, 'Regles!A2:D500'), readRulesFile(), readEpargne(id), readRange(id, 'Budgets!A2:B500'),
+        driveList("'" + hint.id + "' in parents and trashed=false and name contains '.csv'").catch(function (e) { if (e.status === 401) throw e; return null; })
+      ]);
+    }).then(function (r) {
+      var cfg = cfgOf(r[0]), rows = r[1], files = r[6];
+      if (!rows.length || !files || !files.length || (cfg.FOLDER_NAME || CFG.FOLDER_NAME) !== hint.name || sigOf(files) !== load('banque-sig')) return null;
+      var f0 = files[0], info = { fileName: f0.name, fileDate: f0.modifiedTime.slice(0, 10), newest: { name: f0.name, modified: f0.modifiedTime }, checkedAt: new Date().toISOString(), skipped: true };
+      store('banque-checked', info.checkedAt);
+      try { var b0 = JSON.parse(load('banque-base') || 'null'); if (b0 && b0.n) { info.fileName = b0.n; info.fileDate = b0.d; } } catch (e) {}
+      info.lastSync = load('banque-last'); try { info.check = JSON.parse(load('banque-check') || 'null'); } catch (e) {}
+      return build(cfg, info, rows, rulesOf(r[2]), r[3], r[4], budgetsOf(r[5]));
+    });
+  }
+
   function compute(force) {
+    return (force ? Promise.resolve(null) : fastCompute()).then(function (d) { return d || slowCompute(force); });
+  }
+
+  function slowCompute(force) {
     var id, cfg, sync;
     return findSheet().then(function (sid) { id = sid; return ensureSheet(id, 'Config', ['cle', 'valeur']).then(function () { return readConfig(id); }); })
       .then(function (c) { cfg = c; return syncIfNewFile(id, cfg, force).catch(function (e) { if (e.status === 401) throw e; sync = { error: e.message }; return null; }); })
       .then(function (r) { return r ? (sync = r.info, r.rows) : readOps(id); })
       .then(function (rows) {
         if (!rows.length) throw new Error(sync && sync.error ? sync.error : 'Aucune opération pour le moment. Déposez un export CSV dans le dossier d\'export.');
-        return Promise.all([readRules(id), readRulesFile(), readEpargne(id)]).then(function (rr) {
-          var rules = rr[0], fileRules = rr[1].rules, epRows = rr[2];
-          var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(fileRules), exportDate: sync && sync.fileDate, sejours: rr[1].sejours || [], livret: rr[1].livret });
-          data.sync = sync; data.rules = rules; data.fileRules = fileRules; data.fileRulesInfo = rr[1].info; data.fixes = rr[1].fixes || []; data.epargne = savingsSummary_(epRows, today());
-          return readBudgets(id).then(function (b) { data.budgets = b; return data; });
+        return Promise.all([readRules(id), readRulesFile(), readEpargne(id), readBudgets(id)]).then(function (rr) {
+          return build(cfg, sync, rows, rr[0], rr[1], rr[2], rr[3]);
         });
       });
   }
@@ -271,6 +303,7 @@
 
   window.API = {
     signIn: signIn, signOut: signOut,
+    prewarm: function () { if (load('banque-signed') === '1') signIn(false).catch(function () {}); },
     wasSigned: function () { return load('banque-signed') === '1'; },
     cached: function () { try { var c = load('banque-cache'); return c ? JSON.parse(c) : null; } catch (e) { return null; } },
     getDashboard: function () {
