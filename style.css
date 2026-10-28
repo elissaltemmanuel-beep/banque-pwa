@@ -507,7 +507,7 @@ button.fresh{display:block;width:100%;border:0;text-align:left;font:inherit;font
 
 /* Accueil : lignes Livret A / LEP sous le total épargne */
 .kmini{display:flex;justify-content:space-between;gap:8px;font-size:13px}
-.kmini b{font-weight:700;font-variant-numeric:tabular-nums}
+.kmini b{font-weight:500;font-variant-numeric:tabular-nums}
 
 .kmini{align-self:stretch}
 /* Dépenses : lignes plus serrées, barre verticale entre le pourcentage et le montant */
