@@ -94,6 +94,7 @@
   function bar2(c){ var s=status(c), e=expd(c), d=c.spent-e, w=Math.min(Math.abs(d)/((c.fixed||c.avg)*0.5),1)*50, pos=d>=0;
     return '<div class="bar" role="img" aria-label="'+aria(c,'Écart au rythme attendu : '+Math.round(d)+' euros')+'"><i class="'+s.k+'" style="'+(pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i><b style="left:50%"></b></div><div class="gapl muted"><span class="'+s.k+'t">'+(pos?'+':'−')+eur(Math.abs(d))+'</span> par rapport au rythme attendu ('+eur(e)+')</div>'; }
   function compactCard(list,sub){
+    if(!sub&&S.lvl==='sub') return enseignesList();
     var flat=!sub&&S.lvl==='sub', ecarts=S.view==='ecarts', T='button';
     if(flat) list=list.reduce(function(a,c){ return a.concat(c.subs); },[]);
     var cats, extra=0;
@@ -113,7 +114,7 @@
       return '<span class="pvis dep"><i data-w="'+(tot>0?Math.max(x.c.spent,0)/tot*100:0).toFixed(1)+'"></i></span>'; }
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
     else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' data-ssel="'+esc(x.c.n)+'" aria-pressed="'+(S.subSel===x.c.n)+'"':' data-open="'+esc(flat?x.c.pid:x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+(flat?'<small class="muted" style="font-size:11px;font-weight:500"> · '+esc(x.c.par)+'</small>'+(function(){ var t=topOf(x.c.par,x.c.n,1)[0]; return t?'<small class="muted" style="display:block;font-size:11px;font-weight:500;line-height:1.2">'+esc(t[0])+' · '+eur(t[1])+'</small>':''; })():'')+upn(x)+'</span><span class="psm'+(ecarts?'':' pct')+'">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
-    return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+(sub?'':'<div class="switch"><span>Détailler en sous-postes</span><button class="tog" data-act="lvl" aria-pressed="'+flat+'" aria-label="Détailler en sous-postes"></button></div>')+
+    return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+(sub?'':'<div class="switch"><span>Détailler par enseigne</span><button class="tog" data-act="lvl" aria-pressed="'+flat+'" aria-label="Détailler par enseigne"></button></div>')+
       (ecarts?'<p class="gapl muted" style="text-align:center;margin:2px 0 4px">À gauche : sous la moyenne · à droite : au-dessus</p>':'')+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
       '</div>'; }
 
@@ -262,7 +263,7 @@
   function homeScreen(){
     return alertsCard()+kpiCard()+
     (revMode()?revSection():
-    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList());
+    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList()+(S.lvl==='sub'&&!S.f.poste?merchantCard():''));
   }
   /* évolution par poste : du 1er janvier à aujourd'hui, face à la même date l'an dernier */
   function rapportYtd(){
@@ -402,7 +403,7 @@
       '<div class="card syn">'+body+'<div class="gapl muted" style="margin-top:4px">Regroupées par catégorie. Le pourcentage est la part dans les revenus de la période. Les mouvements entre vos comptes sont exclus. Touchez une source pour voir ses opérations.</div></div>'+
       (sel?'<div class="row"><h3 style="font-size:16px">Opérations · '+esc(sel.n)+'</h3></div><div class="card" style="padding:4px 14px">'+opsList(ops.slice(0,40).map(function(o){return [o[0],o[1],sel.n,o[3],0]}))+'</div>':''); }
   function avgLine(){ var t=CATS.reduce(function(s,c){return s+(c.avgm||0)},0); return '<p class="muted" style="font-size:13px;margin:-6px 0 0">Dépenses moyennes : <b style="color:var(--text)">'+eur(t)+'</b> par mois, sur '+S.f.moy+' mois.</p>'; }
-  function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):(S.lvl==='sub'?'Sous-postes':'Postes'); }
+  function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):(S.lvl==='sub'?'Enseignes':'Postes'); }
   function postesList(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null;
     if(!c) return compactCard(CATS);
     var list=S.f.sous? c.subs.filter(function(s){return s.n===S.f.sous}) : c.subs;
@@ -483,6 +484,18 @@
       [e[2]+'|'+e[3],e[2]+'|'].forEach(function(a){ var o=m[a]||(m[a]={}); o[k]=(o[k]||0)+e[1]; }); }); });
     _tm={ck:ck,m:m}; return m; }
   function topOf(poste,sous,n){ var m=topMap(), o=m&&m[poste+'|'+(sous||'')]; if(!o) return []; return Object.keys(o).map(function(k){return [k,o[k]]}).sort(function(a,b){return b[1]-a[1]}).slice(0,n||8); }
+  /* classement des enseignes (qui m'a fait payer le plus) sur la période affichée */
+  function enseignesList(){ var M=D&&D.merch, P_=per(), rows=[], tot=0;
+    if(M) Object.keys(M).forEach(function(k){ var by={}, t=0;
+      (M[k][6]||[]).forEach(function(e){ if(e.length<4||!(e[1]>0)) return; if(P_.isYear?e[0].slice(0,4)!==P_.y:e[0].slice(0,7)!==P_.key) return; t+=e[1]; var a=e[2]+'|'+e[3]; by[a]=(by[a]||0)+e[1]; });
+      if(t<=0) return; var best=Object.keys(by).sort(function(a,b){return by[b]-by[a]})[0].split('|'); tot+=t; rows.push({k:k,t:t,poste:best[0],sous:best[1]}); });
+    rows.sort(function(a,b){return b.t-a.t});
+    var shown=S.all?rows:rows.slice(0,10), mx=Math.max(rows.length?rows[0].t:1,1);
+    var body=shown.length? shown.map(function(r,i){ var nm=(r.sous&&r.sous!==r.poste)?r.poste+' · '+r.sous:r.poste;
+      return '<button class="prow" data-msel="'+esc(r.k)+'" aria-pressed="'+(S.merch===r.k)+'"><span class="ptop"><span class="pnm">'+(i+1)+'. '+esc(r.k)+'<small class="muted" style="display:block;font-size:11px;font-weight:500;line-height:1.2">'+esc(nm)+'</small></span><span class="psm pct">'+(tot>0?Math.round(r.t/tot*100)+' %':'')+'</span><span class="pamt">'+eur(r.t)+'</span></span><span class="pvis dep"><i data-w="'+(tot>0?r.t/tot*100:0).toFixed(1)+'"></i></span></button>'; }).join('')
+      : '<p class="muted" style="padding:16px 4px">Historique des enseignes indisponible. Relisez le dossier dans Plus.</p>';
+    return '<div class="card syn"><div class="switch"><span>Détailler par enseigne</span><button class="tog" data-act="lvl" aria-pressed="true" aria-label="Détailler par enseigne"></button></div>'+body+
+      (rows.length>10?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+(rows.length-10)+' autres')+'</button>':'')+'</div>'; }
   function enseignesCard(c,sb){ var list=topOf(c.n,sb?sb.n:'',8); if(!list.length) return '';
     var mx=Math.max.apply(null,list.map(function(x){return x[1]}).concat([1]));
     return '<div class="row"><h3 style="font-size:16px">Enseignes · '+esc(sb?sb.n:c.n)+'</h3></div><div class="card syn">'+list.map(function(x){
