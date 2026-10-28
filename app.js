@@ -766,6 +766,11 @@
     function rowsHtml(list,get){ var m=Math.max.apply(null,list.map(function(x){return Math.abs(get(x))}).concat([1]));
       return '<div class="ins-rows">'+list.map(function(x,i){ var v=get(x); return '<div class="ins-row'+(v<0?' neg':'')+'"><div class="ins-top"><span class="ins-nm">'+ml(x.k,i===0)+'</span><span class="ins-v">'+(v?(v<0?'−':'')+eur(Math.abs(v)):'—')+'</span></div><span class="ins-bar"><i style="width:'+(Math.abs(v)/m*100).toFixed(1)+'%"></i></span></div>'; }).join('')+'</div>'; }
     var h='<button class="back" data-act="subclose">'+ico(I.back)+'Plus</button><h1>Épargne</h1>';
+    h+='<div class="card ins"><div class="ins-sec"><h3 class="ins-h">Mes livrets</h3><div class="muted" style="font-size:12.5px;line-height:1.4">Saisissez les soldes du jour. L’accueil affiche le Livret A et le LEP séparément ; les virements faits ensuite sont ajoutés au Livret A.</div>'+
+      '<label class="fsel"><span>Livret A (€)</span><input id="eplivret" inputmode="decimal" autocomplete="off" value="'+(D.livret?String(D.livret.est).replace('.',','):'')+'" style="font:inherit"></label>'+
+      '<label class="fsel"><span>LEP (€)</span><input id="eplep" inputmode="decimal" autocomplete="off" value="'+(D.lep?String(D.lep.solde).replace('.',','):'')+'" style="font:inherit"></label>'+
+      (S.epErr?'<div class="badt" style="font-size:12px">'+esc(S.epErr)+'</div>':'')+
+      '<button class="fbtn" data-act="saveep"'+(S.epBusy?' disabled':'')+' style="width:100%">'+(S.epBusy?'Enregistrement…':'Enregistrer')+'</button></div></div>';
     h+='<div class="card ins"><div class="ins-sec"><h3 class="ins-h">Mis de côté</h3><div style="font-size:30px;font-weight:600;letter-spacing:-.02em">'+eur(sent)+'</div><div class="muted" style="font-size:12.5px;line-height:1.4">envoyés vers vos autres comptes sur 12 mois, soit environ '+eur(sent/12)+' par mois. Depuis le début de l’historique : '+eur(allNet)+' nets.</div>'+rowsHtml(sa.map(function(x){return {k:x.k,v:x.sav||0}}),function(x){return x.v})+'<div class="muted" style="font-size:11.5px">Ces virements ne sont pas comptés dans vos dépenses. Un montant en moins (−) est un retour vers le compte courant.</div></div></div>';
     if(E.accounts.length){
       var recu=sum(E.accounts.map(function(a){return a.apports12}));
@@ -918,6 +923,8 @@
     else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
     else if(el.dataset.act==='retry'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='unlock'){doUnlock()}
+    else if(el.dataset.act==='saveep'){ var a=document.getElementById('eplivret'), b=document.getElementById('eplep'); if(!a||!b||S.epBusy) return;
+      var va=a.value, vb=b.value; S.epBusy=true; S.epErr=null; render(); authed('saveEpargne',[va,vb]).then(function(){ S.epBusy=false; return load(true); }).catch(function(err){ S.epBusy=false; S.epErr=errMsg(err); render(); }); }
     else if(el.dataset.act==='refresh'){ if(!S.refreshing) refresh(true) }
     else if(el.dataset.act==='signin'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='lock'){ if(Lock.enabled()){Lock.disable();render()} else Lock.enable().then(render).catch(function(err){S.error=errMsg(err);render()}) }

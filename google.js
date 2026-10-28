@@ -260,8 +260,17 @@
     });
   }
 
+  /** Soldes saisis dans l'appli (onglet Config : LIVRET_SOLDE, LIVRET_DATE, LEP_SOLDE, LEP_DATE) : ils passent avant les lignes @livret / @lep du fichier de règles. */
+  function declared(cfg, rf) {
+    function pick(prefix, base) {
+      var v = Number(String(cfg[prefix + '_SOLDE'] || '').replace(',', '.')), d = cfg[prefix + '_DATE'];
+      return cfg[prefix + '_SOLDE'] !== undefined && cfg[prefix + '_SOLDE'] !== '' && isFinite(v) && /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? Object.assign({}, base || {}, { solde: v, date: d }) : base;
+    }
+    return { livret: pick('LIVRET', rf.livret), lep: pick('LEP', rf.lep) };
+  }
   function build(cfg, sync, rows, rules, rf, epRows, budgets) {
-    var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(rf.rules), exportDate: sync && sync.fileDate, sejours: rf.sejours || [], livret: rf.livret, lep: rf.lep });
+    var dc = declared(cfg, rf);
+    var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(rf.rules), exportDate: sync && sync.fileDate, sejours: rf.sejours || [], livret: dc.livret, lep: dc.lep });
     data.sync = sync; data.rules = rules; data.fileRules = rf.rules; data.fileRulesInfo = rf.info; data.fixes = rf.fixes || []; data.epargne = savingsSummary_(epRows, today()); data.budgets = budgets;
     return data;
   }
@@ -328,6 +337,18 @@
       return findSheet().then(function (sid) { id = sid; return ensureSheet(id, 'Regles', ['motif', 'poste', 'sous_poste', 'montant']); })
         .then(function () { return writeRange(id, 'Regles', 4, clean.map(function (r) { return [r.motif, r.poste, r.sous, r.montant]; })); })
         .then(function () { return clean; });
+    },
+    /** Enregistre les soldes du jour du Livret A et du LEP dans l'onglet Config du Google Sheet. */
+    saveEpargne: function (livret, lep) {
+      var l = Number(String(livret).replace(/\s/g, '').replace(',', '.')), p = Number(String(lep).replace(/\s/g, '').replace(',', '.')), id;
+      if (!(l >= 0) || !(p >= 0) || String(livret).trim() === '' || String(lep).trim() === '') return Promise.reject(new Error('Saisissez les deux soldes (en euros).'));
+      return findSheet().then(function (sid) { id = sid; return ensureSheet(id, 'Config', ['cle', 'valeur']); })
+        .then(function () { return readRange(id, 'Config!A2:B100'); }).then(function (v) {
+          var m = {}, order = []; v.forEach(function (r) { if (r[0]) { m[String(r[0])] = r[1] == null ? '' : r[1]; order.push(String(r[0])); } });
+          var t = today(), set = { LIVRET_SOLDE: Math.round(l * 100) / 100, LIVRET_DATE: t, LEP_SOLDE: Math.round(p * 100) / 100, LEP_DATE: t };
+          Object.keys(set).forEach(function (k) { if (!(k in m)) order.push(k); m[k] = set[k]; });
+          return writeRange(id, 'Config', 2, order.map(function (k) { return [k, m[k]]; }));
+        });
     },
     saveBudget: function (poste, montant) {
       montant = Number(montant);
