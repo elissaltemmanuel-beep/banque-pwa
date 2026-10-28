@@ -1,26 +1,32 @@
 ---
 name: deep
-description: Exécute la tâche qui suit /deep en mode « depth » (méthode de Felix Rieseberg, Anthropic) - pousser le modèle à utiliser les outils, techniques, médias et connaissances des meilleurs professionnels du domaine, au lieu d'un simple « agis comme un expert ».
+description: Exécute la tâche qui suit /deep en mode « depth » (méthode de Felix Rieseberg, Anthropic) - instruments des meilleurs du métier, données brutes, objectif qui semble déraisonnable, puis réécriture du prompt avant exécution. Remplace « agis comme un expert ».
 ---
 
 # /deep
 
-La tâche à accomplir est le texte qui suit `/deep`.
+La tâche est le texte qui suit `/deep`.
 
-## Principe
+## Pourquoi
 
-« Act like an expert » change le vocabulaire de Claude, pas ses méthodes. Le correctif est la **profondeur** : demander les instruments qu'utilisent les experts, les données brutes, et des objectifs qui paraissent déraisonnables.
+Quand on demande à un modèle d'agir comme un professionnel, il change de vocabulaire sans changer de méthodes. Le correctif est la profondeur : utiliser les mêmes instruments que les meilleurs du domaine, partir des données brutes, viser un objectif qui paraît déraisonnable.
 
-## Consigne à appliquer
+## Principes (Felix Rieseberg)
 
-> Depth: Sometimes, you just want a task executed really well. Being ambitious in depth means pushing the model to use the tools, techniques, media, and knowledge employed by the best professionals in the field — and to keep pushing until even those people might learn something new from your work.
+1. **Insist on the same instruments used by the best in the industry.** Si le réflexe est un tableau markdown, exiger bases de données, modèles statistiques, ou l'équivalent du métier. Pas besoin de connaître soi-même ces outils : Claude les connaît.
+2. **Give Claude the raw data.** Challenge what you know : beaucoup de croyances sont des approximations. Donner l'accès à l'information et aux données brutes, et vérifier les hypothèses de façon adverse (ex. « on croit que le churn est un problème d'onboarding : essaie de le reproduire à partir des données brutes »).
+3. **Pick a goal that sounds unreasonable.** Des objectifs précis et difficiles donnent de meilleurs résultats que « fais de ton mieux » (Locke et Latham, 35 ans de recherche). Site en 5 s au lieu de 10 ? Viser 200 ms. Si ça semble impossible, répéter que c'est tout à fait faisable et qu'il suffit de continuer.
+4. **Depth.** Pousser jusqu'à ce que même les meilleurs professionnels puissent apprendre quelque chose du travail.
 
 ## Méthode
 
-1. **Identifie les meilleurs professionnels** du domaine de la tâche et ce qu'ils utilisent réellement : outils, techniques, formats, sources, médias.
-2. **Utilise ces instruments**, pas une imitation de leur style. Va chercher les données brutes (code, fichiers, sources primaires, web) plutôt que de répondre de mémoire.
-3. **Vise un objectif qui sonne déraisonnable** : le niveau d'un travail que ces experts jugeraient eux-mêmes remarquable.
-4. **Continue de pousser** après une première version correcte : cherche ce qui manque, ce qui est fragile, ce qu'un expert contesterait, et améliore jusqu'à ce que même eux puissent y apprendre quelque chose.
-5. **Livre le résultat**, pas un plan : conclusion ou production d'abord, puis le détail utile. Distingue ce qui est vérifié de ce qui est supposé.
+Avant d'exécuter, applique ce prompt à la tâche :
+
+> I want a deeper version of this task, not a bigger one. Before rewriting it: (1) say what a top professional in this field would do here that I'm not asking for; (2) name the rawest material they would start from instead of what has already been digested for me; (3) name the specific methods and tools they would use; (4) say what, other than you or me, would show the result is right. Then rewrite my prompt to ask for exactly that.
+
+1. Réponds brièvement aux points (1) à (4) pour la tâche donnée, puis écris la version réécrite de la tâche (courte, visible pour l'utilisateur).
+2. **Exécute ensuite cette version réécrite**, sans attendre : va chercher les données brutes (code, fichiers, sources primaires, web), utilise les outils identifiés, fixe l'objectif ambitieux.
+3. Valide le résultat avec le critère externe du point (4) (test, mesure, source, calcul reproductible), pas avec ton seul avis.
+4. Continue de pousser après une première version correcte. Livre le résultat, conclusion d'abord, en distinguant le vérifié du supposé.
 
 Réponds en français sauf demande contraire.
