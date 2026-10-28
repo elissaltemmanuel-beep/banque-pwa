@@ -6,7 +6,9 @@
   S.f=fcopy();
   try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.view3) S.view=pr.view3; if(pr.margin!=null) S.margin=+pr.margin; }catch(e){}
   function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view3:S.view,margin:S.margin})); }catch(e){} }
-  document.documentElement.setAttribute('data-theme',S.theme);
+  /* barre d'état du téléphone : de la couleur du fond, claire ou sombre selon le thème, au lieu d'une bande noire */
+  function barColor(){ var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',S.theme==='dark'?'#07060F':'#F7F7FC'); }
+  document.documentElement.setAttribute('data-theme',S.theme); barColor();
   var app=document.getElementById('app');
   app.addEventListener('scroll',function(e){ var h=e.target; if(h&&h.classList&&h.classList.contains('hscroll')){ S.hsKey=h.dataset.hs; S.hsPos=h.scrollLeft; } },true);
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -925,7 +927,7 @@
     else if(el.dataset.act==='lvl'){S.lvl=S.lvl==='sub'?'poste':'sub';S.all=false;render()}
     else if(el.dataset.act==='insp'){S.insP=!S.insP;render()}
     else if(el.dataset.act==='close'){S.insP=false;S.open=null;S.subSel=null;S.merch=null;render();window.scrollTo(0,0)}
-    else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
+    else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);barColor();savePrefs();render()}
     else if(el.dataset.act==='retry'){S.error=null;API.signIn(true).then(function(){S.stage='ready';load()}).catch(function(err){S.error=errMsg(err);render()})}
     else if(el.dataset.act==='unlock'){doUnlock()}
     else if(el.dataset.act==='saveep'){ var a=document.getElementById('eplivret'), b=document.getElementById('eplep'); if(!a||!b||S.epBusy) return;
