@@ -616,6 +616,7 @@ function aggregate(rows, todayIso, opts) {
     daily: daily,
     cats: cats,
     subs: subsRes,
+    alerts: detectAnomalies_(rows, todayIso),
     kpi: kpi, forecast: forecast, excOps: excOps.slice(0, 8), dups: dups, merchants: merchants,
     bilan: bilan_(yr, y),
     ops: opsAll,
@@ -922,6 +923,42 @@ function savingsSummary_(rows, todayIso) {
     };
   });
   return { accounts: accounts, total: round2_(accounts.reduce(function (s, x) { return s + x.solde; }, 0)) };
+}
+
+// ------------------------------------------------------------ alertes prélèvements
+
+/**
+ * Prélèvements habituellement payés une fois par mois (au moins 2 mois précédents, montants proches)
+ * dont le mois en cours sort de l'ordinaire : payé plusieurs fois, ou nettement plus que d'habitude.
+ * Retourne [{ n, par, usual, paid, count, kind }] (kind : 'double' ou 'hausse'), plus gros écart d'abord.
+ */
+function detectAnomalies_(rows, todayIso) {
+  var cur = todayIso.slice(0, 7), groups = {};
+  rows.forEach(function (r) {
+    var date = r[0], amt = r[7], par = r[6] || '', cat = r[5] || par;
+    if (date > todayIso || amt >= 0) return;
+    if (INTERNAL_RE.test(par) || INTERNAL_RE.test(cat) || INCOME_PARENTS.indexOf(par) > -1) return;
+    var k = subKey_(r[2]);
+    if (!k) return;
+    var g = groups[k] = groups[k] || { n: r[4] || r[2], p: par || 'Non catégorisé', m: {} };
+    var mo = g.m[date.slice(0, 7)] = g.m[date.slice(0, 7)] || { n: 0, t: 0 };
+    mo.n++; mo.t += -amt;
+  });
+  var out = [];
+  Object.keys(groups).forEach(function (k) {
+    var g = groups[k], now = g.m[cur];
+    if (!now) return;
+    var prev = Object.keys(g.m).filter(function (x) { return x < cur; }).sort().slice(-6);
+    if (prev.length < 2) return;
+    if (prev.some(function (x) { return g.m[x].n !== 1; })) return;
+    var vals = prev.map(function (x) { return g.m[x].t; }), usual = median_(vals);
+    if (vals.some(function (v) { return Math.abs(v - usual) > usual * 0.3; })) return;
+    if (now.t <= usual * 1.1 || now.t - usual <= 10) return;
+    out.push({ n: g.n, par: g.p, usual: round2_(usual), paid: round2_(now.t), count: now.n,
+      kind: now.n > 1 ? 'double' : 'hausse' });
+  });
+  out.sort(function (a, b) { return (b.paid - b.usual) - (a.paid - a.usual); });
+  return out.slice(0, 5);
 }
 
 // ------------------------------------------------------------ bilan annuel

@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   var TOL=0.15, MIN_EUR=20, D=null, DAY=1, DAYS=30, ELAPSED=0, CATS=[];
-  var S={margin:500,tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
+  var S={lvl:'poste',alertOff:{},margin:500,tab:'home',open:null,hide:false,q:'',view:'depenses',per:'mois',theme:'light',stage:'boot',loading:true,error:null,lockOk:false,lockBusy:false,syncing:false,fopen:false,fanim:false,first:true,all:false};
   function fcopy(){ return {graph:'solde',year:'',month:'',poste:'',sous:'',moy:'12',exc:'excl'}; }
   S.f=fcopy();
   try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.view3) S.view=pr.view3; if(pr.margin!=null) S.margin=+pr.margin; }catch(e){}
@@ -52,7 +52,7 @@
       return {spent:spent,avg:Math.max(am*monthsN,1),avgm:Math.max(am,0)}; }
     return D.cats.map(function(c){ var r=calc(c.all,c.hist,c.spent,S.f.exc!=='incl'?c.exc:null);
       return {id:c.id,n:c.n,spent:r.spent,avg:r.avg,ops:c.ops,all:c.all,td:c.td,upc:c.upc||0,avgm:r.avgm,fixed:declared(c.n,'')||fixedLevel(c.all),
-      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:declared(c.n,s.n)||fixedLevel(s.all),ops:s.ops||[],td:s.td}; })}; }); }
+      subs:c.subs.map(function(s,i){ var q=calc(s.all,s.hist,s.spent,S.f.exc!=='incl'?s.exc:null); return {id:c.id+'-'+i,pid:c.id,par:c.n,n:s.n,spent:q.spent,avg:q.avg,all:s.all,upc:s.upc||0,avgm:q.avgm,fixed:declared(c.n,s.n)||fixedLevel(s.all),ops:s.ops||[],td:s.td}; })}; }); }
   function setData(d){ if(d&&!d.keys&&d.months){ d.keys=d.months.map(function(m){return m.k}); d.seriesAll=d.months.map(function(m){return {k:m.k,bal:m.bal,rev:m.rev,dep:m.dep}}); }
     D=d; DAY=d.today.day; DAYS=d.today.days; ELAPSED=DAY/DAYS; }
   function expd(c){ return c.fixed? c.fixed : c.avg*ELAPSED; }
@@ -94,7 +94,8 @@
   function bar2(c){ var s=status(c), e=expd(c), d=c.spent-e, w=Math.min(Math.abs(d)/((c.fixed||c.avg)*0.5),1)*50, pos=d>=0;
     return '<div class="bar" role="img" aria-label="'+aria(c,'Écart au rythme attendu : '+Math.round(d)+' euros')+'"><i class="'+s.k+'" style="'+(pos?'left:50%':'left:auto;right:50%')+'" data-w="'+w+'"></i><b style="left:50%"></b></div><div class="gapl muted"><span class="'+s.k+'t">'+(pos?'+':'−')+eur(Math.abs(d))+'</span> par rapport au rythme attendu ('+eur(e)+')</div>'; }
   function compactCard(list,sub){
-    var ecarts=S.view==='ecarts', T='button';
+    var flat=!sub&&S.lvl==='sub', ecarts=S.view==='ecarts', T='button';
+    if(flat) list=list.reduce(function(a,c){ return a.concat(c.subs); },[]);
     var cats, extra=0;
     if(sub) cats=srt(list,ecarts);
     else { var pool=applyF(list), keep=pool;
@@ -109,13 +110,12 @@
     function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>'+(x.e>0?' <small class="'+x.k+'t" style="font-size:11.5px;font-weight:600">('+(x.pos?'+':'−')+Math.round(Math.abs(x.d)/x.e*100)+' %)</small>':'')) : eur(x.c.spent); }
     function vis(x){
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
-      return '<span class="pvis dep"><i data-w="'+(Math.max(x.c.spent,0)/mx*100).toFixed(1)+'"></i></span>'; }
+      return '<span class="pvis dep"><i data-w="'+(tot>0?Math.max(x.c.spent,0)/tot*100:0).toFixed(1)+'"></i></span>'; }
     if(!items.length) body='<p class="muted" style="padding:16px 4px">'+(sub?'Pas de sous-poste pour ce poste.':'Aucun poste ne correspond à ces filtres.')+'</p>';
-    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' data-ssel="'+esc(x.c.n)+'" aria-pressed="'+(S.subSel===x.c.n)+'"':' data-open="'+esc(x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+upn(x)+'</span><span class="psm'+(ecarts?'':' pct')+'">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
-    var cap= ecarts ? 'Écart en euros par rapport au rythme attendu au jour '+DAY+'. En rouge : le poste dépasse ce rythme de plus de 15 points (et de plus de 20 €). Un poste au même montant chaque mois est comparé à ce montant. Les 8 postes les plus importants sont affichés.' : 'Triés du plus dépensé au moins dépensé. Le pourcentage est la part du poste dans le total des dépenses.';
-    return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+
+    else body=items.map(function(x){ return '<'+T+' class="prow"'+(sub?' data-ssel="'+esc(x.c.n)+'" aria-pressed="'+(S.subSel===x.c.n)+'"':' data-open="'+esc(flat?x.c.pid:x.c.id)+'"')+' aria-label="'+lab(x)+'"><span class="ptop"><span class="pnm">'+esc(x.c.n)+(flat?'<small class="muted" style="font-size:11px;font-weight:500"> · '+esc(x.c.par)+'</small>':'')+upn(x)+'</span><span class="psm'+(ecarts?'':' pct')+'">'+small(x)+'</span><span class="pamt">'+amt(x)+'</span></span>'+vis(x)+'</'+T+'>'; }).join('');
+    return '<div class="card syn"><div class="seg" role="group" aria-label="Affichage des postes"><button data-view="depenses" aria-pressed="'+!ecarts+'">Dépenses</button><button data-view="ecarts" aria-pressed="'+ecarts+'">Écarts</button></div>'+(sub?'':'<div class="switch"><span>Détailler en sous-postes</span><button class="tog" data-act="lvl" aria-pressed="'+flat+'" aria-label="Détailler en sous-postes"></button></div>')+
       (ecarts?'<p class="gapl muted" style="text-align:center;margin:2px 0 4px">À gauche : sous la moyenne · à droite : au-dessus</p>':'')+body+(!sub&&(extra>0||S.all)&&applyF(list).length>8?'<button class="back" data-act="allpostes" style="min-height:40px;align-self:flex-start;font-size:13px">'+(S.all?'Réduire la liste':'Voir les '+extra+' autres postes')+'</button>':'')+
-      '<div class="gapl muted" style="margin-top:4px">'+cap+'</div></div>'; }
+      '</div>'; }
 
   /* ---------- graphique de l'accueil ---------- */
   function niceCeil(v){ var step=v>12000?5000:v>6000?2000:v>2500?1000:v>1000?500:100; return Math.max(step,Math.ceil(v*1.08/step)*step); }
@@ -182,7 +182,7 @@
         : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Fin de ce mois : '+eur(P.value)+(P.salary.expected>0?', paie attendue vers le '+P.salary.day+' comprise':'')+'.'+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' Le point le plus bas, juste avant la paie, est de '+eur(P.landing.value)+' au '+fmtDate(P.landing.date)+'.':''):'')
         : gr==='bal'? 'Balance de chaque mois : revenus moins dépenses, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'')
         : (gr==='dep'?'Dépenses':'Revenus')+' de chaque mois, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'');
-      aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(projV!=null?'<span>Pointillés : projection</span>':'')+(avgV!=null?'<span><i style="display:inline-block;width:16px;border-top:1px dashed var(--muted);vertical-align:middle;margin-right:5px"></i>Moyenne '+kv(avgV)+'</span>':'')+'<span>Glissez pour voir les mois précédents</span>';
+      aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(avgV!=null?'<span><i style="display:inline-block;width:16px;border-top:1px dashed var(--muted);vertical-align:middle;margin-right:5px"></i>Moyenne '+kv(avgV)+'</span>':'')+'';
     }
     sum_=sum_.replace(/\.{2,}/g,'.');
     return '<div class="kchart">'+(poste?'<div class="row"><h3 style="font-size:14px">'+esc(title)+'</h3>'+badge+'</div>':'')+
@@ -256,10 +256,13 @@
     var BR=''; (function(){ var Pm=per(), key=Pm.isYear?D.today.month:Pm.key, cur=key===D.today.month, o=SA.filter(function(x){return x.k===key})[0], v=cur?(D.proj.revEnd-D.proj.depEnd):(o?o.rev-o.dep:null); if(v==null||isNaN(v)) return;
       var m=MOIS_L[+key.slice(5,7)-1]; BR='<div class="hbal"><span class="bl1"><span>Balance '+(/^[aeiouhéàâêîôû]/.test(m)?'d’':'de ')+m+(cur?'':' '+key.slice(0,4))+'</span><span class="sm">'+(cur?'projection de fin de mois':'balance finale')+'</span></span><b class="bv '+(v<0?'neg':'pos')+'">'+(v<0?'−':'+')+eur(Math.abs(v))+'</b></div>'; })();
     return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+'<span class="hsep"></span>'+right+strip+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+BR+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
+  function alertsCard(){ var A=(D.alerts||[]).filter(function(x){return !S.alertOff[x.n]}); if(!A.length) return '';
+    return A.map(function(x){ var d=x.paid-x.usual;
+      return '<div class="card" role="status" style="display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border-color:var(--bad)"><span class="badge bad" aria-hidden="true">!</span><div style="min-width:0;flex:1;font-size:13px"><b>'+esc(x.n)+(x.kind==='double'?' : '+x.count+' prélèvements':' : plus élevé')+'</b><br><span class="muted">'+eur(x.paid,true)+' payés, '+eur(x.usual,true)+' d\'habitude (+'+eur(d,true)+')</span></div><button class="iconbtn" data-alert="'+esc(x.n)+'" aria-label="Masquer l\'alerte">'+ico(I.close)+'</button></div>'; }).join(''); }
   function homeScreen(){
-    return kpiCard()+
+    return alertsCard()+kpiCard()+
     (revMode()?revSection():
-    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+avgLine()+postesList());
+    '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList());
   }
   /* évolution par poste : du 1er janvier à aujourd'hui, face à la même date l'an dernier */
   function rapportYtd(){
@@ -399,7 +402,7 @@
       '<div class="card syn">'+body+'<div class="gapl muted" style="margin-top:4px">Regroupées par catégorie. Le pourcentage est la part dans les revenus de la période. Les mouvements entre vos comptes sont exclus. Touchez une source pour voir ses opérations.</div></div>'+
       (sel?'<div class="row"><h3 style="font-size:16px">Opérations · '+esc(sel.n)+'</h3></div><div class="card" style="padding:4px 14px">'+opsList(ops.slice(0,40).map(function(o){return [o[0],o[1],sel.n,o[3],0]}))+'</div>':''); }
   function avgLine(){ var t=CATS.reduce(function(s,c){return s+(c.avgm||0)},0); return '<p class="muted" style="font-size:13px;margin:-6px 0 0">Dépenses moyennes : <b style="color:var(--text)">'+eur(t)+'</b> par mois, sur '+S.f.moy+' mois.</p>'; }
-  function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):'Postes'; }
+  function postesTitle(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null; return c?(S.f.sous?'Sous-poste':'Sous-postes'):(S.lvl==='sub'?'Sous-postes':'Postes'); }
   function postesList(){ var c=S.f.poste?CATS.filter(function(x){return x.id===S.f.poste})[0]:null;
     if(!c) return compactCard(CATS);
     var list=S.f.sous? c.subs.filter(function(s){return s.n===S.f.sous}) : c.subs;
@@ -490,9 +493,9 @@
   function plusScreen(){ var dark=S.theme==='dark', s=D.sync||{}, st=D.stats;
     return '<h1>Plus</h1>'+analyseTeaser()+'<div class="card list"><button class="switch" data-tab="bud" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">Budgets</span><span class="muted">›</span></button><button class="switch" data-sub="rules" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">Règles de catégorisation</span><span class="muted">›</span></button><button class="switch" data-sub="bilan" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">Bilan annuel</span><span class="muted">›</span></button><button class="switch" data-sub="rapport" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span>Rapport d’analyse</span><span class="muted">›</span></button><button class="switch" data-sub="vacances" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">Vacances</span><span class="muted">›</span></button><button class="switch" data-sub="epargne" style="width:100%;border:0;background:transparent;text-align:left;min-height:44px;font-size:inherit"><span style="display:flex;align-items:center;gap:10px">Épargne et Livret A</span><span class="muted">›</span></button></div><div class="card" style="padding:4px 16px"><div class="switch"><span>Masquer les montants</span><button class="tog" data-act="hide" aria-pressed="'+S.hide+'" aria-label="Masquer les montants"></button></div><div class="switch"><span>Thème sombre</span><button class="tog" data-act="theme" aria-pressed="'+dark+'" aria-label="Thème sombre"></button></div>'+(S.lockAvail?'<div class="switch"><span>Verrouiller avec l\'empreinte</span><button class="tog" data-act="lock" aria-pressed="'+Lock.enabled()+'" aria-label="Verrouiller avec l\'empreinte"></button></div>':'')+'</div>'+
     '<div class="card" style="display:flex;flex-direction:column;gap:8px"><h3 style="font-size:15px">Vos données</h3>'+
-      '<div class="muted" style="font-size:13px;line-height:1.5">Dernier export lu : <b style="color:var(--text)">'+esc(s.fileName||'inconnu')+'</b>'+(s.fileDate?' ('+esc(fmtDate(s.fileDate))+')':'')+'<br>'+st.rows+' opérations en mémoire, du '+esc(fmtDate(st.from))+' au '+esc(fmtDate(st.to))+'.'+(s.lastSync?'<br>Dernière synchronisation : '+esc(String(s.lastSync).replace('T',' à ')):'')+'<br>Les mouvements entre vos propres comptes ('+st.internal+') ne sont pas comptés dans les dépenses.</div>'+
+      '<div class="muted" style="font-size:13px;line-height:1.5">Export du '+esc(fmtDate(s.fileDate||st.to))+' · '+st.rows+' opérations'+(s.lastSync?' · synchro '+esc(String(s.lastSync).slice(11,16)):'')+'</div>'+
       '<button class="fbtn" data-act="sync"'+(S.syncing?' disabled':'')+'>'+(S.syncing?'Lecture du dossier…':'Relire le dossier maintenant')+'</button>'+
-      '<div class="muted" style="font-size:12px;line-height:1.4">Déposez un nouvel export dans le dossier « Export banque » : il est lu automatiquement à l\'ouverture de cette page.</div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="muted" style="font-size:13px">Version de l\'application : <b style="color:var(--text)">'+esc((window.BANQUE_CONFIG&&BANQUE_CONFIG.BUILD)||'?')+'</b></div><button class="fbtn ghost" data-act="forceupdate" style="width:100%">Forcer la mise à jour</button></div><button class="fbtn ghost" data-act="signout">Se déconnecter et effacer les données de cet appareil</button><p class="note">Prévus ensuite : règles de catégorisation, objectifs d\'épargne.</p>'; }
+      '</div><div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="muted" style="font-size:13px">Version de l\'application : <b style="color:var(--text)">'+esc((window.BANQUE_CONFIG&&BANQUE_CONFIG.BUILD)||'?')+'</b></div><button class="fbtn ghost" data-act="forceupdate" style="width:100%">Forcer la mise à jour</button></div><button class="fbtn ghost" data-act="signout">Se déconnecter et effacer les données de cet appareil</button>'; }
 
 
 
@@ -838,7 +841,8 @@
 
   /* ---------- interactions ---------- */
   app.addEventListener('click',function(e){
-    var el=e.target.closest('[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-msel],[data-gr],[data-ep],[data-rsel],[data-vper],[data-vposte]'); if(!el||el.disabled) return;
+    var el=e.target.closest('[data-alert],[data-tab],[data-open],[data-act],[data-view],[data-sub],[data-bud],[data-aopen],[data-atab],[data-rdel],[data-rpick],[data-rpickn],[data-bar],[data-pv],[data-cal],[data-ssel],[data-msel],[data-gr],[data-ep],[data-rsel],[data-vper],[data-vposte]'); if(!el||el.disabled) return;
+    else if(el.dataset.alert!==undefined){S.alertOff[el.dataset.alert]=1;render()}
     else if(el.dataset.view){S.view=el.dataset.view;savePrefs();render()}
     else if(el.dataset.tab){S.tab=el.dataset.tab;S.merch=null;S.open=null;S.sub=null;S.bud=null;render();window.scrollTo(0,0)}
     else if(el.dataset.rpick!==undefined){ var u=uncategorised()[+el.dataset.rpick]; S.rule={motif:cleanLabel(u.l),poste:'',nouveau:''}; S.ruleErr=null; render(); window.scrollTo(0,0) }
@@ -883,6 +887,7 @@
     else if(el.dataset.act==='fopen'){S.fopen=true;S.fanim=true;paintPanel()}
     else if(el.dataset.act==='hide'){S.hide=!S.hide;savePrefs();render()}
     else if(el.dataset.act==='allpostes'){S.all=!S.all;render()}
+    else if(el.dataset.act==='lvl'){S.lvl=S.lvl==='sub'?'poste':'sub';S.all=false;render()}
     else if(el.dataset.act==='insp'){S.insP=!S.insP;render()}
     else if(el.dataset.act==='close'){S.insP=false;S.open=null;S.subSel=null;S.merch=null;render();window.scrollTo(0,0)}
     else if(el.dataset.act==='theme'){S.theme=S.theme==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',S.theme);savePrefs();render()}
