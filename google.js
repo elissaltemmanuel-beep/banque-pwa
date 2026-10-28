@@ -8,6 +8,10 @@
   var SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets';
   var DRIVE = 'https://www.googleapis.com/drive/v3', SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
   var token = null, expires = 0, client = null, sheetId = null;
+  // Rechargement dû à une mise à jour de l'appli : le jeton passe d'une page à la suivante une seule fois (sessionStorage, effacé dès la lecture),
+  // pour ne pas repasser par l'écran d'authentification Google.
+  try { var hand = JSON.parse(sessionStorage.getItem('banque-hand') || 'null'); sessionStorage.removeItem('banque-hand');
+    if (hand && hand.t && hand.e > Date.now() + 120000) { token = hand.t; expires = hand.e; } } catch (e) {}
 
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -317,6 +321,7 @@
 
   window.API = {
     signIn: signIn, signOut: signOut,
+    handoff: function () { try { if (token && Date.now() < expires - 120000) sessionStorage.setItem('banque-hand', JSON.stringify({ t: token, e: expires })); } catch (e) {} },
     prewarm: function () { if (load('banque-signed') === '1') signIn(false).catch(function () {}); },
     wasSigned: function () { return load('banque-signed') === '1'; },
     cached: function () { try { var c = load('banque-cache'); return c ? JSON.parse(c) : null; } catch (e) { return null; } },

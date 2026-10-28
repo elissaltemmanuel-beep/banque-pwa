@@ -972,7 +972,7 @@
     else if(S.stage==='ready'&&!S.refreshing&&Date.now()-(S.lastCheck||0)>120000){ refresh(false); }   /* retour sur l'appli : on relit le dossier si la dernière vérification a plus de 2 minutes */
   });
   if('serviceWorker' in navigator){ var hadCtl=!!navigator.serviceWorker.controller, reloaded=false;
-    navigator.serviceWorker.addEventListener('controllerchange',function(){ if(!hadCtl||reloaded) return; reloaded=true; location.reload(); });
+    navigator.serviceWorker.addEventListener('controllerchange',function(){ if(!hadCtl||reloaded) return; reloaded=true; API.handoff(); location.reload(); });
     navigator.serviceWorker.register('sw.js').then(function(r){ if(r&&r.update) r.update(); }).catch(function(){}); }
   boot();
   var gf=document.getElementById('gf'); if(gf) gf.media='all';

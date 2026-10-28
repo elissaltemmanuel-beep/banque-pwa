@@ -514,3 +514,8 @@ button.fresh{display:block;width:100%;border:0;text-align:left;font:inherit;font
 .prow{padding:4px 4px!important}
 .ptop:not(.ec) .psm.pct{padding-right:10px;margin-right:2px;border-right:1px solid color-mix(in srgb,var(--text) 28%,transparent);line-height:1.15}
 .ptop:not(.ec) .pamt{min-width:58px}
+
+/* Total liquide : la pastille de variation passe à la ligne au lieu de déborder sur le montant */
+.hero .kstrip{flex-wrap:wrap;row-gap:8px}
+.hero .kstrip .kl{flex:0 1 auto;flex-wrap:wrap;row-gap:2px}
+.hero .kstrip .kchip{flex:none;margin-left:auto}
