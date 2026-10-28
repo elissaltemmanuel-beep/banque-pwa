@@ -266,7 +266,7 @@
       var v = Number(String(cfg[prefix + '_SOLDE'] || '').replace(',', '.')), d = cfg[prefix + '_DATE'];
       return cfg[prefix + '_SOLDE'] !== undefined && cfg[prefix + '_SOLDE'] !== '' && isFinite(v) && /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? Object.assign({}, base || {}, { solde: v, date: d }) : base;
     }
-    return { livret: pick('LIVRET', rf.livret), lep: pick('LEP', rf.lep) };
+    return { livret: pick('LIVRET', rf.livret), lep: pick('LEP', rf.lep || CFG.LEP) };
   }
   function build(cfg, sync, rows, rules, rf, epRows, budgets) {
     var dc = declared(cfg, rf);

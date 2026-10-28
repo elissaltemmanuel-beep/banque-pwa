@@ -627,7 +627,7 @@ function aggregate(rows, todayIso, opts) {
     revOps: revOps,
     vac: vacances_(rows, todayIso, opts.sejours),
     rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
-    livret: livret_(rows, todayIso, opts.livret),
+    livret: livret_(rows, todayIso, opts.livret, opts.lep),
     lep: opts.lep && opts.lep.solde >= 0 && opts.lep.date ? { solde: round2_(opts.lep.solde), date: opts.lep.date, taux: opts.lep.taux || null } : null,
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
@@ -755,7 +755,7 @@ function rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur) {
 // ----------------------------------------------------------------- Livret A déclaré
 
 /** Livret A saisi à la main dans le fichier de règles (@livret) : solde connu à une date, plus les versements partis du compte courant depuis. */
-function livret_(rows, todayIso, L) {
+function livret_(rows, todayIso, L, lep) {
   if (!L || !(L.solde >= 0) || !L.date) return null;
   var sent = 0, n = 0;
   rows.forEach(function (r) {
@@ -763,7 +763,9 @@ function livret_(rows, todayIso, L) {
     if (r[0] <= L.date || r[0] > todayIso || !(INTERNAL_RE.test(par) || INTERNAL_RE.test(cat)) || /^apport/i.test(cat)) return;
     sent -= r[7]; n++;
   });
-  var est = round2_(L.solde + sent);
+  // LEP alimenté après la déclaration du Livret A et qui ne bouge plus : ses versements sont dans les virements internes ci-dessus, on les retire
+  var lepIn = lep && lep.solde >= 0 && lep.date && L.date < lep.date ? lep.solde : 0;
+  var est = round2_(L.solde + sent - lepIn);
   return { solde: round2_(L.solde), date: L.date, plafond: L.plafond || null, taux: L.taux || null, interets: L.interets || null, brut: L.brut || null, since: round2_(sent), nSince: n, est: est,
     usage: L.plafond ? round2_(est / L.plafond * 100) : null, reste: L.plafond ? round2_(Math.max(0, L.plafond - est)) : null };
 }
