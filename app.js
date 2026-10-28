@@ -231,8 +231,11 @@
     var left='<'+(L?'button data-act="landtoggle" aria-expanded="'+open+'"':'div')+' class="ktile"><span class="muted" style="font-size:12.5px">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</span><span class="kv" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</span>'+(d0!=null?kchip(d0,p0,true):'')+proj+'</'+(L?'button':'div')+'>';
     /* Livret A (à droite) : solde, intérêts touchés et non touchés */
     var Lv=D.livret, E=D.epargne||{accounts:[]}, acc=E.accounts&&E.accounts[0], lv=Lv?{solde:Lv.est,brut:Lv.brut,enc:Lv.interets}:(acc?{solde:acc.solde,brut:acc.interetsYtd||null,enc:null}:null), right;
-    var Lp=D.lep, epTot=lv?lv.solde+(Lp?Lp.solde:0):0;   /* épargne = Livret A + LEP quand le LEP est déclaré */
-    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">'+(Lp?'Épargne':'Livret A')+'</span><span class="kv"'+(Lp?' style="font-weight:500"':'')+'>'+eur(epTot)+'</span>'+(Lp?'<span class="kmini"><span class="muted">Livret A</span><b>'+eur(lv.solde)+'</b></span><span class="kmini"><span class="muted">LEP</span><b>'+eur(Lp.solde)+'</b></span>':'')+(sav>0?kchip(sav,epTot>sav?sav/(epTot-sav)*100:null,true):'')+'</div>'; }
+    /* épargne : total automatique (comptes d'épargne exportés, sinon Livret A déclaré + virements reçus) ; le détail par livret s'affiche quand il est connu */
+    var Lp=D.lep, eacc=E.accounts||[], epTot=eacc.length?E.total:(lv?lv.solde+(Lp?Lp.solde:0):0), eln=[];
+    function accName(n){ n=String(n||''); return /populaire/i.test(n)?'LEP':/livret\s*a\b/i.test(n)?'Livret A':n.charAt(0).toUpperCase()+n.slice(1).toLowerCase(); }
+    if(eacc.length>1) eln=eacc.map(function(x){return [accName(x.n),x.solde]}); else if(lv&&Lp) eln=[['Livret A',lv.solde],['LEP',Lp.solde]];
+    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">Épargne</span><span class="kv" style="font-weight:500">'+eur(epTot)+'</span>'+eln.map(function(x){return '<span class="kmini"><span class="muted">'+esc(x[0])+'</span><b>'+eur(x[1])+'</b></span>'}).join('')+(sav>0?kchip(sav,epTot>sav?sav/(epTot-sav)*100:null,true):'')+'</div>'; }
     else { var s12=sum(SA.slice(-12).map(function(x){return x.sav||0}));
       right='<div class="ktile"><span class="muted" style="font-size:12.5px">Mis de côté</span><span class="kv">'+eur(s12)+'</span><span class="note">sur 12 mois</span></div>'; }
     /* total liquide : compte courant + Livret A + intérêts non touchés */
