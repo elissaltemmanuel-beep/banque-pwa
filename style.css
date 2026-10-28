@@ -519,3 +519,6 @@ button.fresh{display:block;width:100%;border:0;text-align:left;font:inherit;font
 .hero .kstrip{flex-wrap:wrap;row-gap:8px}
 .hero .kstrip .kl{flex:0 1 auto;flex-wrap:wrap;row-gap:2px}
 .hero .kstrip .kchip{flex:none;margin-left:auto}
+
+/* Enseignes : montant collé à droite quand il n'y a pas de colonne pourcentage */
+.ptop .pnm+.pamt{margin-left:auto}
