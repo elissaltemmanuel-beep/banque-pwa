@@ -232,7 +232,7 @@
     /* Livret A (à droite) : solde, intérêts touchés et non touchés */
     var Lv=D.livret, E=D.epargne||{accounts:[]}, acc=E.accounts&&E.accounts[0], lv=Lv?{solde:Lv.est,brut:Lv.brut,enc:Lv.interets}:(acc?{solde:acc.solde,brut:acc.interetsYtd||null,enc:null}:null), right;
     var Lp=D.lep, epTot=lv?lv.solde+(Lp?Lp.solde:0):0;   /* épargne = Livret A + LEP quand le LEP est déclaré */
-    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">'+(Lp?'Épargne':'Livret A')+'</span><span class="kv">'+eur(epTot)+'</span>'+(Lp?'<span class="kmini"><span class="muted">Livret A</span><b>'+eur(lv.solde)+'</b></span><span class="kmini"><span class="muted">LEP</span><b>'+eur(Lp.solde)+'</b></span>':'')+(sav>0?kchip(sav,epTot>sav?sav/(epTot-sav)*100:null,true):'')+'</div>'; }
+    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">'+(Lp?'Épargne':'Livret A')+'</span><span class="kv"'+(Lp?' style="font-weight:500"':'')+'>'+eur(epTot)+'</span>'+(Lp?'<span class="kmini"><span class="muted">Livret A</span><b>'+eur(lv.solde)+'</b></span><span class="kmini"><span class="muted">LEP</span><b>'+eur(Lp.solde)+'</b></span>':'')+(sav>0?kchip(sav,epTot>sav?sav/(epTot-sav)*100:null,true):'')+'</div>'; }
     else { var s12=sum(SA.slice(-12).map(function(x){return x.sav||0}));
       right='<div class="ktile"><span class="muted" style="font-size:12.5px">Mis de côté</span><span class="kv">'+eur(s12)+'</span><span class="note">sur 12 mois</span></div>'; }
     /* total liquide : compte courant + Livret A + intérêts non touchés */
