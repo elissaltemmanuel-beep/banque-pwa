@@ -958,4 +958,5 @@
     navigator.serviceWorker.addEventListener('controllerchange',function(){ if(!hadCtl||reloaded) return; reloaded=true; location.reload(); });
     navigator.serviceWorker.register('sw.js').then(function(r){ if(r&&r.update) r.update(); }).catch(function(){}); }
   boot();
+  var gf=document.getElementById('gf'); if(gf) gf.media='all';
 })();
