@@ -130,7 +130,7 @@
       if (!f.length) return { rules: [], fixes: [], sejours: [], info: 'absent' };
       try { var m = JSON.parse(load('banque-rf') || 'null'); if (m && m.id === f[0].id && m.mt === f[0].modifiedTime && m.v) return m.v; } catch (e) {}   // fichier inchangé : pas de nouvelle lecture
       return call(DRIVE + '/files/' + f[0].id + '?alt=media').then(function (r) { return r.text(); }).then(function (txt) {
-        var out = [], fixes = [], sejours = [], livret = null;
+        var out = [], fixes = [], sejours = [], livret = null, lep = null;
         txt.replace(/^\uFEFF/, '').split(/\r?\n/).forEach(function (line) {
           line = line.trim(); if (!line || line[0] === '#') return;
           var p = line.split(/\s*[;|\t]\s*/);
@@ -145,13 +145,18 @@
             if (num(p[1]) != null && /^\d{4}-\d{2}-\d{2}$/.test(p[2] || '')) livret = { solde: num(p[1]), date: p[2], plafond: num(p[3]), taux: num(p[4]), interets: num(p[5]), brut: num(p[6]) };
             return;
           }
+          if (p[0].toLowerCase() === '@lep') {   // LEP déclaré : @lep ; solde ; date ; taux en % (le taux est facultatif)
+            var ln = function (v) { var x = Number(String(v || '').replace(/\s/g, '').replace(',', '.').replace(/[^0-9.\-]/g, '')); return isFinite(x) && String(v || '').trim() !== '' ? x : null; };
+            if (ln(p[1]) != null && /^\d{4}-\d{2}-\d{2}$/.test(p[2] || '')) lep = { solde: ln(p[1]), date: p[2], taux: ln(p[3]) };
+            return;
+          }
           if (p[0].toLowerCase() === '@sejour') {   // dates forcées d'une période de vacances : @sejour ; Été 2026 ; 2026-07-04 ; 2026-09-01 (dernier jour inclus)
             if (/^\d{4}-\d{2}-\d{2}$/.test(p[2] || '') && /^\d{4}-\d{2}-\d{2}$/.test(p[3] || '') && p[2] <= p[3]) sejours.push({ n: p[1], a: p[2], b: p[3] });
             return;
           }
           out.push({ motif: p[0], poste: p[1], sous: p[2] || '', montant: p[3] ? Number(String(p[3]).replace(',', '.').replace(/[^0-9.]/g, '')) || '' : '', fichier: true });
         });
-        var v = { rules: out, fixes: fixes, sejours: sejours, livret: livret, info: 'ok' };
+        var v = { rules: out, fixes: fixes, sejours: sejours, livret: livret, lep: lep, info: 'ok' };
         store('banque-rf', JSON.stringify({ id: f[0].id, mt: f[0].modifiedTime, v: v }));
         return v;
       });
@@ -256,7 +261,7 @@
   }
 
   function build(cfg, sync, rows, rules, rf, epRows, budgets) {
-    var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(rf.rules), exportDate: sync && sync.fileDate, sejours: rf.sejours || [], livret: rf.livret });
+    var data = aggregate(rows, today(), { salaryPattern: cfg.SALARY_PATTERN, rules: rules.concat(rf.rules), exportDate: sync && sync.fileDate, sejours: rf.sejours || [], livret: rf.livret, lep: rf.lep });
     data.sync = sync; data.rules = rules; data.fileRules = rf.rules; data.fileRulesInfo = rf.info; data.fixes = rf.fixes || []; data.epargne = savingsSummary_(epRows, today()); data.budgets = budgets;
     return data;
   }

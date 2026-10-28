@@ -504,3 +504,13 @@ button.fresh{display:block;width:100%;border:0;text-align:left;font:inherit;font
 .ptop.ec{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px}
 .ptop.ec .psm{margin:0;text-align:center;font-weight:600!important;color:color-mix(in srgb,var(--text) 55%,var(--muted))!important}
 .ptop.ec .pamt{justify-self:end;min-width:0}
+
+/* Accueil : lignes Livret A / LEP sous le total épargne */
+.kmini{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.kmini b{font-weight:700;font-variant-numeric:tabular-nums}
+
+.kmini{align-self:stretch}
+/* Dépenses : lignes plus serrées, barre verticale entre le pourcentage et le montant */
+.prow{padding:4px 4px!important}
+.ptop:not(.ec) .psm.pct{padding-right:10px;margin-right:2px;border-right:1px solid color-mix(in srgb,var(--text) 28%,transparent);line-height:1.15}
+.ptop:not(.ec) .pamt{min-width:58px}

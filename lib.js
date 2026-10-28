@@ -628,6 +628,7 @@ function aggregate(rows, todayIso, opts) {
     vac: vacances_(rows, todayIso, opts.sejours),
     rapport: rapport_(dailyBal, todayIso, seriesAll, kpi, solde, cur),
     livret: livret_(rows, todayIso, opts.livret),
+    lep: opts.lep && opts.lep.solde >= 0 && opts.lep.date ? { solde: round2_(opts.lep.solde), date: opts.lep.date, taux: opts.lep.taux || null } : null,
     stats: {
       rows: rows.length, from: rows.length ? rows[0][0] : null,
       to: rows.length ? rows[rows.length - 1][0] : null,

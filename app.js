@@ -231,13 +231,14 @@
     var left='<'+(L?'button data-act="landtoggle" aria-expanded="'+open+'"':'div')+' class="ktile"><span class="muted" style="font-size:12.5px">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</span><span class="kv" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</span>'+(d0!=null?kchip(d0,p0,true):'')+proj+'</'+(L?'button':'div')+'>';
     /* Livret A (à droite) : solde, intérêts touchés et non touchés */
     var Lv=D.livret, E=D.epargne||{accounts:[]}, acc=E.accounts&&E.accounts[0], lv=Lv?{solde:Lv.est,brut:Lv.brut,enc:Lv.interets}:(acc?{solde:acc.solde,brut:acc.interetsYtd||null,enc:null}:null), right;
-    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">Livret A</span><span class="kv">'+eur(lv.solde)+'</span>'+(sav>0?kchip(sav,lv.solde>sav?sav/(lv.solde-sav)*100:null,true):'')+
+    var Lp=D.lep, epTot=lv?lv.solde+(Lp?Lp.solde:0):0;   /* épargne = Livret A + LEP quand le LEP est déclaré */
+    if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">'+(Lp?'Épargne':'Livret A')+'</span><span class="kv">'+eur(epTot)+'</span>'+(Lp?'<span class="kmini"><span class="muted">Livret A</span><b>'+eur(lv.solde)+'</b></span><span class="kmini"><span class="muted">LEP</span><b>'+eur(Lp.solde)+'</b></span>':'')+(sav>0?kchip(sav,epTot>sav?sav/(epTot-sav)*100:null,true):'')+
         (lv.brut!=null?'<span class="note">Touchés <b>+'+eur(lv.brut,true)+'</b></span>':'')+(lv.enc!=null?'<span class="note" style="margin-top:-2px">Non touchés <b>+'+eur(lv.enc,true)+'</b></span>':'')+'</div>'; }
     else { var s12=sum(SA.slice(-12).map(function(x){return x.sav||0}));
       right='<div class="ktile"><span class="muted" style="font-size:12.5px">Mis de côté</span><span class="kv">'+eur(s12)+'</span><span class="note">sur 12 mois</span></div>'; }
     /* total liquide : compte courant + Livret A + intérêts non touchés */
     var strip='';
-    if(lv){ var tot=D.solde+lv.solde+(lv.enc||0), ref=km.prevSame!=null?km.prevSame+(lv.solde-sav):null;
+    if(lv){ var tot=D.solde+epTot+(lv.enc||0), ref=km.prevSame!=null?km.prevSame+(epTot-sav):null;
       strip='<div class="kstrip"><span class="kl"><span class="muted">Total liquide</span><b>'+eur(tot,true)+'</b></span>'+(ref!=null?kchip(tot-ref,ref?(tot-ref)/Math.abs(ref)*100:null,true):'')+'</div>'; }
     var sub=L&&L.exportAge>1?'Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.':'';
     KCMP=''; var dep='', P_=per(), sk=P_.key, gm=S.f.graph||'solde', Dd=D.daily||{}, nDay=P_.cur?DAY:99;
