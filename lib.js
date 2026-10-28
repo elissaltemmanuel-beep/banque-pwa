@@ -265,6 +265,9 @@ function applyRules_(rows, rules) {
 function aggregate(rows, todayIso, opts) {
   opts = opts || {};
   rows = applyRules_(rows, opts.rules);
+  // libellés renommés à l'affichage (le motif est cherché dans le libellé suggéré, sinon dans le libellé brut)
+  var RENAMES = [[/virement\s+depuis\s+boursobank/i, 'Versement épargne']];
+  rows = rows.map(function (r) { var t = String(r[4] || r[2] || ''); for (var i = 0; i < RENAMES.length; i++) if (RENAMES[i][0].test(t)) { var c = r.slice(); c[4] = RENAMES[i][1]; return c; } return r; });
   var salaryRe = new RegExp(opts.salaryPattern || '(?!)', 'i');
   // le solde du CSV est celui de la date d'export : les opérations datées après ne sont pas encore confirmées
   var cut = opts.exportDate && opts.exportDate < todayIso ? opts.exportDate : todayIso;
