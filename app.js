@@ -243,7 +243,7 @@
     /* total liquide : compte courant + Livret A + intérêts non touchés */
     var strip='';
     if(lv){ var tot=D.solde+epTot+(lv.enc||0), ref=km.prevSame!=null?km.prevSame+(epTot-sav):null;
-      strip='<div class="kstrip"><span class="kl"><span class="muted">Total liquide</span><b>'+eur(tot,true)+'</b></span>'+(ref!=null?kchip(tot-ref,ref?(tot-ref)/Math.abs(ref)*100:null,true):'')+'</div>'; }
+      strip='<div class="kstrip"><span class="kl"><span class="muted">Total</span><b>'+eur(tot,true)+'</b></span>'+(ref!=null?kchip(tot-ref,ref?(tot-ref)/Math.abs(ref)*100:null,true):'')+'</div>'; }
     var sub=L&&L.exportAge>1?'Export du '+fmtDate(L.exportDate)+' : les '+L.exportAge+' derniers jours ne sont pas vus. Déposez un nouvel export.':'';
     KCMP=''; var dep='', P_=per(), sk=P_.key, gm=S.f.graph||'solde', Dd=D.daily||{}, nDay=P_.cur?DAY:99;
     var mname=MOIS_L[+P_.mo-1], when=P_.cur?mname+', au '+DAY:mname+' '+P_.y;
