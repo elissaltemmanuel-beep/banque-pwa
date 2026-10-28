@@ -232,7 +232,9 @@
     /* Livret A (à droite) : solde, intérêts touchés et non touchés */
     var Lv=D.livret, E=D.epargne||{accounts:[]}, acc=E.accounts&&E.accounts[0], lv=Lv?{solde:Lv.est,brut:Lv.brut,enc:Lv.interets}:(acc?{solde:acc.solde,brut:acc.interetsYtd||null,enc:null}:null), right;
     /* épargne : total automatique (comptes d'épargne exportés, sinon Livret A déclaré + virements reçus) ; le détail par livret s'affiche quand il est connu */
-    var Lp=D.lep, eacc=E.accounts||[], epTot=eacc.length?E.total:(lv?lv.solde+(Lp?Lp.solde:0):0), eln=[];
+    var Lp=D.lep, CL=window.BANQUE_CONFIG&&window.BANQUE_CONFIG.LEP;
+    if(!Lp&&CL&&Lv&&lv){ Lp={solde:CL.solde,date:CL.date}; if(Lv.date<CL.date) lv=Object.assign({},lv,{solde:lv.solde-CL.solde}); }   /* données gardées d'une ouverture précédente : le LEP fixe de config.js est appliqué ici */
+    var eacc=E.accounts||[], epTot=eacc.length?E.total:(lv?lv.solde+(Lp?Lp.solde:0):0), eln=[];
     function accName(n){ n=String(n||''); return /populaire/i.test(n)?'LEP':/livret\s*a\b/i.test(n)?'Livret A':n.charAt(0).toUpperCase()+n.slice(1).toLowerCase(); }
     if(eacc.length>1) eln=eacc.map(function(x){return [accName(x.n),x.solde]}); else if(lv&&Lp) eln=[['Livret A',lv.solde],['LEP',Lp.solde]];
     if(lv){ right='<div class="ktile"><span class="muted" style="font-size:12.5px">Épargne</span><span class="kv" style="font-weight:500">'+eur(epTot)+'</span>'+eln.map(function(x){return '<span class="kmini"><span class="muted">'+esc(x[0])+'</span><b>'+eur(x[1])+'</b></span>'}).join('')+(sav>0?kchip(sav,epTot>sav?sav/(epTot-sav)*100:null,true):'')+'</div>'; }
