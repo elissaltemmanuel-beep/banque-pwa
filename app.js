@@ -200,8 +200,7 @@
   function freshLine(){ var sy=(D&&D.sync)||{}, out='', ck=sy.check;
     if(ck&&ck.ok===false) out+='<div class="fresh bad" role="alert"><b>Le solde ne correspond pas au dernier export.</b> L’appli affiche '+eur(ck.appBal)+' au '+esc(fmtDate(ck.appDate))+', le dernier export ('+esc(ck.file)+') indique '+eur(ck.fileBal)+' au '+esc(fmtDate(ck.fileDate))+'. Touchez la flèche Actualiser, ou Plus &gt; Relire le dossier.</div>';
     if(S.refreshing) out+='<div class="fresh">Vérification du dossier d’export…</div>';
-    else if(S.stale) out+='<button class="fresh warn" data-act="refresh" role="status"><b>Dossier non vérifié.</b> Ces chiffres datent de la dernière synchronisation'+(sy.checkedAt?' ('+esc(dayHm(sy.checkedAt))+')':'')+(S.silentErr?' · '+esc(S.silentErr):'')+'. <b>Touchez ici</b> pour relire le dossier (Google peut demander une confirmation).</button>';
-    else if(sy.newest&&sy.newest.modified) out+='<div class="fresh">Dernier export lu : déposé le '+esc(dayHm(sy.newest.modified))+(sy.checkedAt?' · dossier vérifié à '+esc(hm(sy.checkedAt)):'')+'.</div>';
+    else if(!S.stale&&sy.newest&&sy.newest.modified) out+='<div class="fresh">Dernier export lu : déposé le '+esc(dayHm(sy.newest.modified))+(sy.checkedAt?' · dossier vérifié à '+esc(hm(sy.checkedAt)):'')+'.</div>';
     return out; }
   function landDetail(L){ function r(l,v,cls){ return '<div class="row" style="font-size:13px;padding:5px 0"><span class="muted">'+l+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+v+'</b></div>'; }
     return '<div style="border-top:1px solid var(--rim-soft);padding:8px 16px 14px">'+
