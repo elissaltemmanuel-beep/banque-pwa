@@ -75,6 +75,7 @@
   function alertsList(){ return onCurrentMonth(alertsListRaw); }
   function alertsListRaw(){ var a=[], L=D.proj&&D.proj.landing, ex=exportInfo();
     if(L&&L.days>0){ if(L.value<0) a.push({k:'bad',t:'Solde négatif prévu',m:'Atterrissage à '+eur(L.value)+' au '+fmtDate(L.date)+', juste avant la paie.',tab:'home'}); else if(L.value<300) a.push({k:'warn',t:'Atterrissage serré',m:'Il resterait '+eur(L.value)+' au '+fmtDate(L.date)+', juste avant la paie.',tab:'home'}); }
+    (D.alerts||[]).filter(function(x){return !S.alertOff[x.n]}).forEach(function(x){ a.push({k:'bad',t:x.n+(x.kind==='double'?' : '+x.count+' prélèvements':' : plus élevé'),m:eur(x.paid,true)+' payés, '+eur(x.usual,true)+' d\'habitude (+'+eur(x.paid-x.usual,true)+').',tab:'subs'}); });
     CATS.forEach(function(c){ var s=status(c); if(s.k==='bad'||s.k==='warn') a.push({k:s.k,t:c.n+' : '+s.t.toLowerCase(),m:eur(c.spent)+' dépensés, rythme attendu '+eur(c.avg*ELAPSED)+'.',open:c.id}); });
     CATS.forEach(function(c){ if(!(D.budgets&&D.budgets[c.n])) return; var b=budInfo(c); if(b.k!=='ok') a.push({k:b.k,t:'Budget '+c.n+' : '+b.t.toLowerCase(),m:eur(c.spent)+' sur un plafond de '+eur(b.cap)+'.',tab:'bud'}); });
     ((D.subs&&D.subs.list)||[]).forEach(function(x){ if(!x.active) return; if(x.hausse) a.push({k:'warn',t:'Hausse : '+x.n,m:eur(x.hausse.from,true)+' → '+eur(x.hausse.to,true)+' par mois.',tab:'subs'}); else if(x.nouveau) a.push({k:'warn',t:'Nouvel abonnement : '+x.n,m:eur(x.amt,true)+' par mois, repéré récemment.',tab:'subs'}); });
@@ -256,11 +257,8 @@
     var BR=''; (function(){ var Pm=per(), key=Pm.isYear?D.today.month:Pm.key, cur=key===D.today.month, o=SA.filter(function(x){return x.k===key})[0], v=cur?(D.proj.revEnd-D.proj.depEnd):(o?o.rev-o.dep:null); if(v==null||isNaN(v)) return;
       var m=MOIS_L[+key.slice(5,7)-1]; BR='<div class="hbal"><span class="bl1"><span>Balance '+(/^[aeiouhéàâêîôû]/.test(m)?'d’':'de ')+m+(cur?'':' '+key.slice(0,4))+'</span><span class="sm">'+(cur?'projection de fin de mois':'balance finale')+'</span></span><b class="bv '+(v<0?'neg':'pos')+'">'+(v<0?'−':'+')+eur(Math.abs(v))+'</b></div>'; })();
     return '<div class="hero kwrap">'+header()+syncNote()+'<div class="ktiles">'+left+'<span class="hsep"></span>'+right+strip+'</div>'+(open?'<div class="kdetail">'+landDetail(L)+'</div>':'')+BR+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="kwrap">'+chartInner()+'</div>'; }
-  function alertsCard(){ var A=(D.alerts||[]).filter(function(x){return !S.alertOff[x.n]}); if(!A.length) return '';
-    return A.map(function(x){ var d=x.paid-x.usual;
-      return '<div class="card" role="status" style="display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border-color:var(--bad)"><span class="badge bad" aria-hidden="true">!</span><div style="min-width:0;flex:1;font-size:13px"><b>'+esc(x.n)+(x.kind==='double'?' : '+x.count+' prélèvements':' : plus élevé')+'</b><br><span class="muted">'+eur(x.paid,true)+' payés, '+eur(x.usual,true)+' d\'habitude (+'+eur(d,true)+')</span></div><button class="iconbtn" data-alert="'+esc(x.n)+'" aria-label="Masquer l\'alerte">'+ico(I.close)+'</button></div>'; }).join(''); }
   function homeScreen(){
-    return alertsCard()+kpiCard()+
+    return kpiCard()+
     (revMode()?revSection():
     '<div class="row"><h2 style="font-size:18px">'+postesTitle()+'</h2><span class="muted" style="font-size:12px">'+(per().cur?'Jour '+DAY+' sur '+DAYS:esc(per().label))+'</span></div>'+postesList()+(S.lvl==='sub'&&!S.f.poste?merchantCard():''));
   }
