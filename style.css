@@ -522,3 +522,15 @@ button.fresh{display:block;width:100%;border:0;text-align:left;font:inherit;font
 
 /* Enseignes : montant collé à droite quand il n'y a pas de colonne pourcentage */
 .ptop .pnm+.pamt{margin-left:auto}
+
+/* jauges et barres en traits fins (2 px de trait, 3 px d'écart), extrémités droites ; couleurs inchangées */
+:root{--lines:repeating-linear-gradient(90deg,#000 0 2px,transparent 2px 5px);--off:color-mix(in srgb,var(--text) 15%,transparent)}
+.bar,.pvis,.pbar,.ins-bar,.rgtrack,.rev-b{border-radius:0;background:var(--off);-webkit-mask:var(--lines);mask:var(--lines)}
+.bar i,.pvis i,.pbar i,.ins-bar i,.rgtrack .val,.rgtrack .band,.rev-b i{border-radius:0!important}
+.bar,.pvis,.pbar{height:14px}.bar.thin{height:12px}.ins-bar{height:12px}.rgtrack{height:14px}.rgtrack .val{top:0;bottom:0}.rev-b{height:12px}
+.pvis,.pbar{overflow:visible}
+.bar b{top:0;height:100%;border-radius:0}
+.bar,.pvis.ec{-webkit-mask:linear-gradient(90deg,transparent 50%,#000 50% calc(50% + 2px),transparent 0),var(--lines);mask:linear-gradient(90deg,transparent 50%,#000 50% calc(50% + 2px),transparent 0),var(--lines)}
+.pvis.ec::before{top:0;bottom:0;margin-left:0;border-radius:0;opacity:1}
+.ins-gauge{border-radius:0}
+.rbc i{border-radius:0;width:2px;flex:0 0 2px;background:var(--accent)}

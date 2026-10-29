@@ -163,7 +163,7 @@
       function drawBal(){ var pos=Math.max.apply(null,known.concat([projV||0,0])), neg=-Math.min.apply(null,known.concat([projV||0,0])), mxp=niceCeil(Math.max(pos,1)), tot=mxp+(neg>0?niceCeil(neg):0), u=G/tot, zy=20+mxp*u, o='<line x1="10" x2="'+(VW-10)+'" y1="'+zy.toFixed(1)+'" y2="'+zy.toFixed(1)+'" stroke="var(--rim-soft)"/>';
         slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, mn=+key.slice(5,7)-1, sel=n===hi, last=n===curSlot, has=v!=null, bx=(cx-(SW-10)/2).toFixed(1);
           o+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="200" fill="transparent"/>';
-          function one(val,dash){ var h=Math.max(Math.abs(val)*u,2), y=val<0?zy:zy-h, c=val<0?'var(--bad)':col; return '<rect x="'+bx+'" y="'+y.toFixed(1)+'" width="'+(SW-10)+'" height="'+h.toFixed(1)+'" rx="6" '+(dash?'fill="none" stroke="'+c+'" stroke-dasharray="2 2"':'fill="'+(sel||hi<0?c:(val<0?'color-mix(in srgb,var(--bad) 45%,transparent)':'var(--neu)'))+'"')+'/>'; }
+          function one(val,dash){ var h=Math.max(Math.abs(val)*u,2), y=val<0?zy:zy-h, c=val<0?'var(--bad)':col; return '<rect x="'+bx+'" y="'+y.toFixed(1)+'" width="'+(SW-10)+'" height="'+h.toFixed(1)+'" '+(dash?'fill="none" stroke="'+c+'" stroke-dasharray="2 2"':'mask="url(#bcm)" fill="'+(sel||hi<0?c:(val<0?'color-mix(in srgb,var(--bad) 45%,transparent)':'var(--neu)'))+'"')+'/>'; }
           var shown=last&&projV!=null?projV:v;
           if(has&&!(last&&projV!=null)) o+=one(v,false); if(last&&projV!=null) o+=one(projV,true);
           if(!S.hide&&shown!=null){ var yy2=shown<0?zy+Math.max(Math.abs(shown)*u,2)+12:zy-Math.max(Math.abs(shown)*u,2)-4; o+=txt(cx.toFixed(1),yy2.toFixed(1),kv(shown),{a:'middle',size:14,fill:sel?'var(--text)':'var(--muted)',w:700}); }
@@ -174,8 +174,8 @@
       if(balMode) g=drawBal(); else
       slots.forEach(function(sl,n){ var cx=10+bw*(n+.5), v=vals[n], key=sl.key, mn=+key.slice(5,7)-1, lab=MOIS_C[mn]||'', sel=n===hi, last=n===curSlot, has=v!=null;
         g+='<g data-bar="'+key+'" role="button" aria-label="'+esc(MOIS_L[mn]+' '+key.slice(0,4))+'" style="cursor:pointer"><rect x="'+(cx-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="200" fill="transparent"/>';
-        if(has) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(v,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
-        if(last&&projV!=null) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(projV,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" rx="6" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>';
+        if(has) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(v,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(v,0),mx)/mx*G).toFixed(1)+'" mask="url(#bcm)" fill="'+(sel||hi<0?col:'var(--neu)')+'"/>';
+        if(last&&projV!=null) g+='<rect x="'+(cx-(SW-10)/2).toFixed(1)+'" y="'+Y(projV,mx)+'" width="'+(SW-10)+'" height="'+(Math.min(Math.max(projV,0),mx)/mx*G).toFixed(1)+'" fill="none" stroke="'+col+'" stroke-dasharray="2 2"/>';
         if(!S.hide&&has) g+=txt(cx.toFixed(1),(Y(last&&projV!=null?projV:v,mx)-4),kv(last&&projV!=null?projV:v),{a:'middle',size:14,fill:sel?'var(--text)':'var(--muted)',w:700});
         g+=txt(cx.toFixed(1),186,lab,{a:'middle',size:11.5,fill:sel?'var(--text)':'var(--muted)',w:sel?700:0})+((n===0||mn===0)?txt(cx.toFixed(1),198,key.slice(0,4),{a:'middle',size:8.5}):'')+'</g>'; });
       var comp=vals.filter(function(v,n){return v!=null&&n!==curSlot}), avgV=comp.length>=3? sum(comp)/comp.length : null;
@@ -192,7 +192,7 @@
     return '<div class="kchart">'+(poste?'<div class="row"><h3 style="font-size:14px">'+esc(title)+'</h3>'+badge+'</div>':'')+
       (!poste?'<div class="ctrls"><div class="seg sm" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus'],['bal','Balance']].map(function(g){ return '<button data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div></div>':'')+(poste?'':KCMP)+
       '<div class="kcard"><p class="muted" style="font-size:13px;margin:2px 0 6px;line-height:1.4">'+sum_+'</p>'+
-      ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 204" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'">'+svg+'</svg></div>')+
+      ('<div class="hscroll" data-hs="'+esc((poste?poste.id:'')+'|'+gr+'|'+(rolling?'r':PR.y))+'"><svg viewBox="0 0 '+VW+' 204" style="width:'+(VW/(7*SW+20)*100).toFixed(1)+'%;max-width:none;display:block" role="img" aria-label="'+esc(aria)+'"><defs><pattern id="bcl" width="5" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="4" fill="#fff"/></pattern><mask id="bcm" maskUnits="userSpaceOnUse" x="0" y="0" width="'+VW+'" height="204"><rect width="'+VW+'" height="204" fill="url(#bcl)"/></mask></defs>'+svg+'</svg></div>')+
       '<div class="muted" style="display:flex;gap:6px 14px;font-size:11px;flex-wrap:wrap;margin-top:4px">'+leg+'</div></div></div>'; }
 
   /* ---------- écrans ---------- */
