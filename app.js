@@ -56,7 +56,7 @@
     up:'<path d="M12 19V5M6 11l6-6 6 6"/>',in:'<path d="M12 5v14M6 13l6 6 6-6"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',pie:'<circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.4 6.4"/>'};
   function msvg(n){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(MI[n]||MI.card)+'</svg>'; }
   function mtop(title,o){ o=o||{}; var left=o.back?'<button class="m-round" type="button" data-act="'+o.back+'" aria-label="Retour">'+msvg('back')+'</button>':'';
-    return '<div class="m-top">'+left+'<h2>'+esc(title)+'</h2>'+(o.tools||'')+'</div>'; }
+    return '<div class="m-top">'+left+'<h2>'+esc(title)+(o.meta||'')+'</h2>'+(o.tools||'')+'</div>'; }
   function mtools(){ var spin=S.loading||S.refreshing, n=D?alertsList().filter(function(x){return x.k==='bad'||x.k==='warn'}).length:0;
     return '<div class="m-tools"><button class="m-round" type="button" data-act="theme" aria-label="'+(S.theme==='dark'?'Passer au thème clair':'Passer au thème sombre')+'">'+msvg(S.theme==='dark'?'sun':'moon')+'</button>'+
       (D?'<button class="m-round'+(spin?' spin':'')+'" type="button" data-act="refresh" aria-label="Actualiser'+(S.stale&&D?', chiffres du '+esc(fmtDate(D.stats.lastRealDate)):'')+'">'+msvg('sync')+(S.stale&&!spin?'<span class="dot stale" style="position:absolute;top:9px;right:9px"></span>':'')+'</button>':'')+
@@ -377,7 +377,7 @@
     var bvv=null, blab=null; if(BR){ bvv=BR.match(/<b class="bv (neg|pos)">([^<]*)<\/b>/); blab=BR.match(/<span class="bl1"><span>([^<]*)<\/span><span class="sm">([^<]*)<\/span>/); }
     var tBal=(BR&&bvv&&blab)?'<div class="m-tile m-span2"><div class="m-head"><span class="m-ic">'+msvg('trend')+'</span><span class="m-t" style="flex:1">'+blab[1]+'<br>'+blab[2]+'</span><button class="m-go dark" type="button" data-gr="bal" aria-label="Voir le graphique de balance">'+msvg('arrow')+'</button></div><div class="m-v"><span class="m-n '+(bvv[1]==='neg'?'m-neg':'m-pos')+'" aria-label="'+esc(bvv[2])+'">'+(BRV!=null?(BRV<0?'':'+')+kc(BRV):bvv[2])+'</span>'+(spark(balS,92,28)||'')+'<span class="m-dotsline" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>':'';
     var monName=MOIS_L[+D.today.month.slice(5,7)-1];
-    return syncHead()+mtop(monName.charAt(0).toUpperCase()+monName.slice(1),{tools:mtools()})+syncNote()+hero+'<div class="m-grid seule">'+tTot+tEp+tBal+'</div>'+(proj?'<p class="m-cap">'+proj+'</p>':'')+(open?'<div class="m-card kdetail">'+landDetail(L)+'</div>':'')+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+(RNG()?'':chartInner()); }
+    return syncHead()+mtop(monName.charAt(0).toUpperCase()+monName.slice(1),{tools:mtools(),meta:(D.stats&&D.stats.lastRealDate?'<span class="m-tsep" aria-hidden="true"></span><span class="m-tmeta"><small>dernière opération</small>'+esc(fmtDate(D.stats.lastRealDate))+'</span>':'')})+syncNote()+hero+'<div class="m-grid seule">'+tTot+tEp+tBal+'</div>'+(proj?'<p class="m-cap">'+proj+'</p>':'')+(open?'<div class="m-card kdetail">'+landDetail(L)+'</div>':'')+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+(RNG()?'':chartInner()); }
   function homeScreen(){
     if(RNG()) return kpiCard()+rangeSection();
     return kpiCard()+

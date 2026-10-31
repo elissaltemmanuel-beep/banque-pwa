@@ -326,3 +326,8 @@ html body .fchip[aria-pressed="true"]{background:var(--ink)!important;color:var(
 .m-tile.m-span2 .m-v{gap:14px}
 .m-tile.m-span2 .m-v .m-mini{margin-left:auto}
 .m-tile.m-span2 .m-dotsline{display:none}
+/* titre de l'accueil : barre verticale et date de la dernière opération */
+.m-top h2{display:flex;align-items:center;gap:12px;white-space:nowrap}
+.m-tsep{width:1px;height:30px;background:var(--soft2);flex:none}
+.m-tmeta{display:flex;flex-direction:column;font-size:15px;line-height:1.15;font-weight:400;letter-spacing:0;color:var(--ink)}
+.m-tmeta small{font-size:11px;color:var(--ink-3)}
