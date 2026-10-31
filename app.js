@@ -171,7 +171,7 @@
     var items=cats.map(info), body;
     var tot=sum(list.map(function(c){return c.spent>0?c.spent:0})), mx=Math.max.apply(null,items.map(function(x){return x.c.spent}).concat([1]));
     function small(x){ return ecarts? (x.c.fixed?'fixe ':'')+eur(x.e) : (tot>0? Math.round(Math.max(x.c.spent,0)/tot*100)+' %' : ''); }
-    function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<b class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</b>'+(x.e>0?' <small class="'+x.k+'t" style="font-size:11.5px;font-weight:600">('+(x.pos?'+':'−')+Math.round(Math.abs(x.d)/x.e*100)+' %)</small>':'')) : eur(x.c.spent); }
+    function amt(x){ return ecarts? (x.c.fixed&&x.s.t==='Fixe, à jour'? '<b class="okt">À jour</b>' : '<span class="'+x.k+'t">'+(x.pos?'+':'−')+eur(Math.abs(x.d))+'</span>'+(x.e>0?' <b class="pcb '+x.k+'t">('+(x.pos?'+':'−')+Math.round(Math.abs(x.d)/x.e*100)+' %)</b>':'')) : eur(x.c.spent); }
     function vis(x){
       if(ecarts){ var w=Math.max(Math.min(Math.abs(x.gap)/45,1)*50,0.8); return '<span class="pvis ec"><i class="'+x.k+' '+(x.pos?'r':'l')+'" data-w="'+w.toFixed(1)+'"></i></span>'; }
       return '<span class="pvis dep"><i data-w="'+(tot>0?Math.max(x.c.spent,0)/tot*100:0).toFixed(1)+'"></i></span>'; }
@@ -184,7 +184,7 @@
   /* ---------- graphiques de la maquette : courbe lissée du solde et colonnes en traits fins ---------- */
   function kfm(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000?(Math.round(x/100)/10).toString().replace('.',',')+'K':String(Math.round(x))); }
   function mcourbe(vals,labs,keys,sel,projV,aria){
-    var W=320,H=176,L=34,R=14,T=46,B=34, ys=[],lb=[],ky=[],i,real=[];
+    var W=320,H=262,L=34,R=14,T=48,B=34, ys=[],lb=[],ky=[],i,real=[];
     for(i=0;i<vals.length;i++){ ys.push(vals[i]); lb.push(labs[i]); ky.push(keys[i]); }
     var hasProj=projV!=null; if(hasProj){ ys.push(projV); lb.push('fin'); ky.push(null); }
     var n=ys.length, nums=ys.filter(function(v){return v!=null}); if(!nums.length) return '';
@@ -286,11 +286,11 @@
     }
     sum_=sum_.replace(/\.{2,}/g,'.');
     var ttlM=gr==='solde'?'Solde en fin de mois':gr==='dep'?'Dépenses par mois':gr==='rev'?'Revenus par mois':'Balance par mois';
-    var labsM=slots.map(function(sl){ return MOIS_C[+sl.key.slice(5,7)-1]||''; }), keysM=slots.map(function(sl){ return sl.key; }), selM=hi, hs=(!poste&&(gr==='solde'||gr==='bal')&&S.gs!=='traits');
+    var labsM=slots.map(function(sl){ return MOIS_C[+sl.key.slice(5,7)-1]||''; }), keysM=slots.map(function(sl){ return sl.key; }), selM=hi, hs=(!poste&&(gr==='solde'||gr==='bal'));
     var w0=(rolling&&!po)?Math.max(0,slots.length-7):Math.max(0,slots.length-12), nv=slots.length-w0, labV=labsM.slice(w0).map(function(l){ return nv>8?l.charAt(0).toUpperCase():l; });
     var chartM=hs? mcourbe(vals0.slice(w0),labV,keysM.slice(w0),selM-w0,(curSlot===slots.length-1&&projV!=null)?projV:null,aria) : mbars(vals0.slice(w0),labV,keysM.slice(w0),selM-w0,curSlot-w0,projV,aria);
     var segM=!poste?'<div class="m-seg" role="group" aria-label="Donnée du graphique">'+[['solde','Solde'],['dep','Dépenses'],['rev','Revenus'],['bal','Balance']].map(function(g){ return '<button type="button" data-gr="'+g[0]+'" aria-pressed="'+(gr===g[0])+'">'+g[1]+'</button>'; }).join('')+'</div>':'';
-    var gsM=(!poste&&(gr==='solde'||gr==='bal'))?'<div class="m-gs" role="group" aria-label="Style du graphique"><button type="button" data-gs="courbe" aria-pressed="'+(S.gs!=='traits')+'">Courbe</button><button type="button" data-gs="traits" aria-pressed="'+(S.gs==='traits')+'">Traits</button></div>':'';
+    var gsM='';
     return '<div class="m-card kchart">'+(poste?'<div class="row"><h3>'+esc(title)+'</h3>'+badge+'</div>':segM+(poste?'':KCMP))+(poste?'':'<h3>'+esc(ttlM)+'</h3>')+'<p class="m-sub">'+sum_+'</p>'+gsM+chartM+(poste&&leg?'<div class="m-leg">'+leg+'</div>':'')+'</div>'; }
 
   /* ---------- écrans ---------- */
@@ -370,12 +370,12 @@
     for(di=0;di<Math.min(DAY,dM.length);di++){ if(dM[di]!=null) lastB=dM[di]; dS.push(lastB); }
     var heroDots='<div class="m-dots" aria-hidden="true"><i></i><i class="m"></i><i></i><i></i><i class="l"></i></div>';
     var hero='<div class="m-glw hw"><div class="m-tint"><div class="row"><span class="m-ic">'+msvg('card')+'</span>'+(L?'<button class="m-go" type="button" data-act="landtoggle" aria-expanded="'+open+'" aria-label="Projection de fin de mois">'+msvg('arrow')+'</button>':'')+'</div>'+
-      '<div><div class="m-lab">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</div><div class="m-foot"><div class="m-big" id="bal" data-v="'+D.solde+'" aria-label="'+esc(eur(D.solde))+'">'+kc(D.solde)+'</div>'+(heroS.length>1?wave(heroS,156,58,'m-hspark'):heroDots)+'</div></div></div></div>';
+      '<div><div class="m-lab">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</div><div class="m-foot"><div class="m-big" id="bal" data-v="'+D.solde+'" aria-label="'+esc(eur(D.solde))+'">'+kc(D.solde)+'</div>'+(heroS.length>1?wave(heroS,160,80,'m-hspark'):heroDots)+'</div></div></div></div>';
     var decorTot='<svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><g stroke="none"><circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="16" cy="16" r="1.6"/><circle cx="22" cy="12" r="2.4"/><circle cx="28" cy="16" r="1.6"/><circle cx="34" cy="7" r="1.6"/><circle cx="40" cy="16" r="1.6"/></g></svg>';
-    var tTot=tot2!=null?'<div class="m-tile"><div class="m-head"><span class="m-ic">'+msvg('search')+'</span><span class="m-t">Total</span></div><div class="m-v"><span class="m-n m-nb" aria-label="'+esc(eur(tot2))+'">'+N2(tot2)+'</span>'+(wave(totS,70,28)||decorTot)+'</div></div>':'';
-    var tEp='<button class="m-tile" type="button" data-act="goep"><div class="m-head"><span class="m-ic">'+msvg('chart')+'</span><span class="m-t">'+(lv?'Épargne<br>totale':'Mis de côté')+'</span></div><div class="m-v"><span class="m-n" aria-label="'+esc(eur(epV))+'">'+N2(epV)+'</span>'+(minibars(savS,70,28)||'<svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><path d="M2 14c3-8 5-8 8 0s5 8 8 0 5-8 8 0 5 8 8 0 5-8 8 0" stroke-dasharray="2 3"/></svg>')+'</div></button>';
+    var tTot=tot2!=null?'<div class="m-tile"><div class="m-head"><span class="m-ic">'+msvg('search')+'</span><span class="m-t">Total</span></div><div class="m-v"><span class="m-n m-nb" aria-label="'+esc(eur(tot2))+'">'+N2(tot2)+'</span>'+(wave(totS,64,44)||decorTot)+'</div></div>':'';
+    var tEp='<button class="m-tile" type="button" data-act="goep"><div class="m-head"><span class="m-ic">'+msvg('chart')+'</span><span class="m-t">'+(lv?'Épargne<br>totale':'Mis de côté')+'</span></div><div class="m-v"><span class="m-n" aria-label="'+esc(eur(epV))+'">'+N2(epV)+'</span>'+(minibars(savS,64,44)||'<svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><path d="M2 14c3-8 5-8 8 0s5 8 8 0 5-8 8 0 5 8 8 0 5-8 8 0" stroke-dasharray="2 3"/></svg>')+'</div></button>';
     var bvv=null, blab=null; if(BR){ bvv=BR.match(/<b class="bv (neg|pos)">([^<]*)<\/b>/); blab=BR.match(/<span class="bl1"><span>([^<]*)<\/span><span class="sm">([^<]*)<\/span>/); }
-    var tBal=(BR&&bvv&&blab)?'<div class="m-tile m-span2"><div class="m-head"><span class="m-ic">'+msvg('trend')+'</span><span class="m-t" style="flex:1">'+blab[1]+'<br>'+blab[2]+'</span><button class="m-go dark" type="button" data-gr="bal" aria-label="Voir le graphique de balance">'+msvg('arrow')+'</button></div><div class="m-v"><span class="m-n '+(bvv[1]==='neg'?'m-neg':'m-pos')+'" aria-label="'+esc(bvv[2])+'">'+(BRV!=null?(BRV<0?'':'+')+kc(BRV):bvv[2])+'</span>'+(minibars(balS,96,32)||'')+'<span class="m-dotsline" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>':'';
+    var tBal=(BR&&bvv&&blab)?'<div class="m-tile m-span2"><div class="m-head"><span class="m-ic">'+msvg('trend')+'</span><span class="m-t" style="flex:1">'+blab[1]+'<br>'+blab[2]+'</span><button class="m-go dark" type="button" data-gr="bal" aria-label="Voir le graphique de balance">'+msvg('arrow')+'</button></div><div class="m-v"><span class="m-n '+(bvv[1]==='neg'?'m-neg':'m-pos')+'" aria-label="'+esc(bvv[2])+'">'+(BRV!=null?(BRV<0?'':'+')+kc(BRV):bvv[2])+'</span>'+(minibars(balS,110,48)||'')+'<span class="m-dotsline" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>':'';
     var monName=MOIS_L[+D.today.month.slice(5,7)-1];
     return syncHead()+mtop(monName.charAt(0).toUpperCase()+monName.slice(1),{tools:mtools(),meta:(D.stats&&D.stats.lastRealDate?'<span class="m-tsep" aria-hidden="true"></span><span class="m-tmeta"><small>dernière opération</small>'+esc(fmtDate(D.stats.lastRealDate))+'</span>':'')})+syncNote()+hero+'<div class="m-grid seule">'+tTot+tEp+tBal+'</div>'+(proj?'<p class="m-cap">'+proj+'</p>':'')+(open?'<div class="m-card kdetail">'+landDetail(L)+'</div>':'')+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+(RNG()?'':chartInner()); }
   function homeScreen(){

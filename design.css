@@ -356,3 +356,19 @@ html body .fchip[aria-pressed="true"]{background:var(--ink)!important;color:var(
 .m-tile:not(.m-span2) .m-v{gap:8px;align-items:flex-end}
 .m-tile:not(.m-span2) .m-v svg{flex:0 1 56px;min-width:0;width:56px!important;height:auto!important;max-height:30px;margin-right:2px}
 .m-tile:not(.m-span2) .m-n{flex:none}
+/* tuiles plus compactes, graphiques plus hauts */
+.m-tile:not(.m-span2){aspect-ratio:1.38/1;padding:18px 22px 20px}
+.m-tile:not(.m-span2) .m-v svg{flex:0 1 62px;width:62px!important;height:auto!important;max-height:46px}
+.m-tile.m-span2{padding:20px 30px 22px}
+.m-tile.m-span2 .m-v svg.mb{height:48px!important}
+.m-hspark{margin-bottom:6px}
+.m-bc{height:190px}
+/* opérations : une carte par jour, avec un espace entre les jours */
+#oplist,.screen-inner{display:flex;flex-direction:column;gap:12px}
+/* « Détailler par enseigne » : plus de trait au-dessus */
+html body .card.syn .switch{border-top:0!important;padding-top:2px;padding-bottom:2px}
+/* Écarts : pourcentage à la taille du montant et en gras, montant en poids normal, montant fixe en gris foncé */
+html body .prow .pamt span{font-weight:400!important}
+html body .prow .pamt .pcb{font-weight:600!important;font-size:inherit!important}
+html body .prow .ptop.ec .psm{color:var(--ink-2)!important;font-weight:400!important}
+html body .prow .ptop.ec .psm b,html body .prow .ptop.ec .psm span{font-weight:400!important;color:var(--ink-2)!important}
