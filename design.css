@@ -291,3 +291,29 @@ html body .fsel{display:flex;flex-direction:column;gap:6px;font-size:13px;color:
 html body .fsel input,html body .fsel select{font:inherit;font-size:16px;color:var(--ink);background:var(--soft);border:0;border-radius:16px;padding:12px 14px;min-height:46px;width:100%;box-shadow:none}
 html body .m-tile .m-n small{font-size:14px;opacity:.7}
 html body .m-tint .m-note{font-size:14px;font-weight:300;opacity:.95}
+/* postes : graisse de la maquette (400), pas de gras */
+html body .prow .pnm,html body .prow .pamt,html body .prow .pamt b,html body .prow .psm,html body .prow small,html body .prow b{font-weight:400!important}
+html body .prow .pnm small,html body .prow .pamt small{font-weight:400!important}
+html body .compact .pnm,html body .card .pnm,html body .card .pamt{font-weight:400!important}
+html body .card .pnm,html body .card .pamt b{letter-spacing:0}
+/* gras en trop : tous les libellés des écrans de détail reprennent le poids de la maquette */
+html body .ins-nm,html body .ins-v,html body .ins-nm small,html body .sname,html body .sval,html body .sval small,html body .pv,html body .pl,html body .rttl,html body .rtile b,html body .rtile span,html body .ins-fact b,html body .ins-gauge em,html body .psm b,html body .okt,html body .warnt,html body .badt,html body .back,html body .gapl,html body .gapl span,html body .opline .l span,html body .ins-top span,html body .pair b,html body .pair span,html body .rline,html body .rline b,html body .rtr,html body .kl b,html body .card b,html body .card strong,html body .rcover h1{font-weight:400!important}
+html body .ins-chip,html body .ins-pill,html body .badge,html body .badge b,html body .kchip,html body .kchip b{font-weight:500!important}
+/* calendrier du filtre de période */
+.m-cal{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;padding:12px;border-radius:24px;background:var(--soft)}
+.m-calh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.m-calh b{font-weight:400;font-size:16px}
+.m-calh .m-round{width:36px;height:36px}
+.m-calw,.m-calg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.m-calw span{font-size:12px;color:var(--ink-3);padding:2px 0}
+.m-cd{height:38px;border:0;border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:15px;cursor:pointer;padding:0}
+.m-cd.today{box-shadow:inset 0 0 0 1px var(--soft2)}
+.m-cd.on{background:var(--soft2)}
+.m-cd.edge{background:var(--ink);color:var(--card)}
+:root[data-theme="dark"] .m-cd.edge{background:#f6f2f3;color:#1d1a24}
+.m-cd:disabled{opacity:.3;cursor:default}
+.m-kv{display:flex;justify-content:space-between;gap:10px;font-size:15px;padding:8px 0;border-top:1px solid var(--line)}
+.m-kv b{font-weight:400}
+.m-sub{margin:0;font-size:13px;color:var(--ink-3)}
+html body .fchip{border-radius:999px!important;font:inherit;font-size:14px;padding:8px 14px;min-height:40px;border:1px solid var(--soft2)!important;background:transparent!important;color:var(--ink)!important;box-shadow:none!important;font-weight:400!important}
+html body .fchip[aria-pressed="true"]{background:var(--ink)!important;color:var(--card)!important;border-color:transparent!important}

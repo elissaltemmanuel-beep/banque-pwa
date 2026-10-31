@@ -3,7 +3,7 @@ window.BANQUE_CONFIG = {
   CLIENT_ID: '401450053161-krqm6u6u2pedjtg7ghj9ehmdur7kl2a2.apps.googleusercontent.com',
   SHEET_NAME: 'Banque',          // nom du Google Sheet qui stocke les opérations
   FOLDER_NAME: 'Export banque',  // dossier Drive où sont déposés les exports CSV
-  BUILD: '2026-10-31 · design verre complet',
+  BUILD: '2026-10-31 · période libre, fond de la capture',
   LEP: { solde: 9030, date: '2026-10-28' },   // LEP : alimenté une fois, il ne bouge plus ; les virements suivants vont au Livret A
   TIMEZONE: 'Europe/Paris'
 };
