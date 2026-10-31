@@ -7,9 +7,9 @@
   try{ var pr=JSON.parse(localStorage.getItem('banque-prefs')||'{}'); if(pr.theme) S.theme=pr.theme; if(pr.view3) S.view=pr.view3; if(pr.margin!=null) S.margin=+pr.margin; }catch(e){}
   function savePrefs(){ try{ localStorage.setItem('banque-prefs',JSON.stringify({theme:S.theme,hide:S.hide,view3:S.view,margin:S.margin})); }catch(e){} }
   /* barre d'état du téléphone : de la couleur du fond, claire ou sombre selon le thème, au lieu d'une bande noire */
-  function barColor(){ var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',S.theme==='dark'?'#605D57':'#DFDABE'); }
+  function barColor(){ var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',S.theme==='dark'?'#6D6C70':'#FFFFFF'); }
   /* ---------- design verre : fond ambre, maillage de la carte du haut et grain, calculés une seule fois puis gardés ---------- */
-  (function(){ var root=document.documentElement, K='banque-design-v2', C=null;
+  (function(){ var root=document.documentElement, K='banque-design-v3', C=null;
     try{ C=JSON.parse(localStorage.getItem(K)||'null'); }catch(e){}
     function put(c){ root.style.setProperty('--scene',c.scene); root.style.setProperty('--hero',c.hero); root.style.setProperty('--noise',c.noise); }
     if(C&&C.scene&&C.hero&&C.noise){ put(C); return; }
@@ -27,7 +27,7 @@
       var i; /* grain fin */
       var nc=document.createElement('canvas'); nc.width=nc.height=96; var nx=nc.getContext('2d'), nd=nx.createImageData(96,96), v; for(i=0;i<nd.data.length;i+=4){ v=Math.random()<.5?255:0; nd.data[i]=nd.data[i+1]=nd.data[i+2]=v; nd.data[i+3]=Math.round(Math.random()*11); }
       nx.putImageData(nd,0,0); var noise='linear-gradient(transparent,transparent),url('+nc.toDataURL('image/png')+') 0 0/96px 96px';
-      C={scene:'url(bg.jpg)',hero:hero,noise:noise}; put(C); try{ localStorage.setItem(K,JSON.stringify(C)); }catch(e){}
+      C={scene:'url(bg.jpg?v=3)',hero:hero,noise:noise}; put(C); try{ localStorage.setItem(K,JSON.stringify(C)); }catch(e){}
     }catch(e){}
   })();
   document.documentElement.setAttribute('data-theme',S.theme); barColor();
@@ -359,15 +359,23 @@
       dep=(gm==='solde'||gm==='bal'?'':'<div><span class="m-sub">'+esc(ttl)+'</span><div style="font-size:26px;font-weight:300">'+eur(cur0)+'</div></div>')+
         '<div class="kcmp m-kcmp">'+(dp!=null?'<div><div class="m-sub">Mois dernier</div><div class="m-kn">'+eur(prv)+'</div>'+kchip(dp,prv?dp/Math.abs(prv)*100:null,goodUp)+'</div>':'')+(da!=null?'<div><div class="m-sub">Moyenne</div><div class="m-kn">'+eur(avg)+'</div>'+kchip(da,avg?da/Math.abs(avg)*100:null,goodUp)+'</div>':'')+'</div>'; }
     KCMP=dep;
-    var BR=''; (function(){ var Pm=per(), key=Pm.isYear?D.today.month:Pm.key, cur=key===D.today.month, o=SA.filter(function(x){return x.k===key})[0], v=cur?(D.proj.revEnd-D.proj.depEnd):(o?o.rev-o.dep:null); if(v==null||isNaN(v)) return;
-      var m=MOIS_L[+key.slice(5,7)-1]; BR='<div class="hbal"><span class="bl1"><span>Balance '+(/^[aeiouhéàâêîôû]/.test(m)?'d’':'de ')+m+(cur?'':' '+key.slice(0,4))+'</span><span class="sm">'+(cur?'projection de fin de mois':'balance finale')+'</span></span><b class="bv '+(v<0?'neg':'pos')+'">'+(v<0?'−':'+')+eur(Math.abs(v))+'</b></div>'; })();
-    var tot2=lv?D.solde+epTot+(lv.enc||0):null, epV=lv?epTot:sum(SA.slice(-12).map(function(x){return x.sav||0})), N2=function(v){ return eur(v); };
+    var BR='', BRV=null; (function(){ var Pm=per(), key=Pm.isYear?D.today.month:Pm.key, cur=key===D.today.month, o=SA.filter(function(x){return x.k===key})[0], v=cur?(D.proj.revEnd-D.proj.depEnd):(o?o.rev-o.dep:null); if(v==null||isNaN(v)) return;
+      BRV=v; var m=MOIS_L[+key.slice(5,7)-1]; BR='<div class="hbal"><span class="bl1"><span>Balance '+(/^[aeiouhéàâêîôû]/.test(m)?'d’':'de ')+m+(cur?'':' '+key.slice(0,4))+'</span><span class="sm">'+(cur?'projection de fin de mois':'balance finale')+'</span></span><b class="bv '+(v<0?'neg':'pos')+'">'+(v<0?'−':'+')+eur(Math.abs(v))+'</b></div>'; })();
+    var tot2=lv?D.solde+epTot+(lv.enc||0):null, epV=lv?epTot:sum(SA.slice(-12).map(function(x){return x.sav||0})), N2=function(v){ return kc(v); };
+    var nM=Math.min(7,SA.length), epS=[], acc=epTot, ii;
+    for(ii=SA.length-1;ii>=SA.length-nM;ii--){ epS.unshift(acc); acc-=(SA[ii].sav||0); }
+    var totS=SA.slice(-nM).map(function(x,j){ return (x.bal||0)+epS[j]; }); if(totS.length&&tot2!=null) totS[totS.length-1]=tot2;
+    var balS=SA.slice(-nM).map(function(x){ return x.rev-x.dep; }); if(balS.length&&BRV!=null) balS[balS.length-1]=BRV;
+    var dM=(D.daily&&D.daily[D.today.month]&&D.daily[D.today.month].b)||[], dS=[], lastB=null, di;
+    for(di=0;di<Math.min(DAY,dM.length);di++){ if(dM[di]!=null) lastB=dM[di]; dS.push(lastB); }
+    var heroDots='<div class="m-dots" aria-hidden="true"><i></i><i class="m"></i><i></i><i></i><i class="l"></i></div>';
     var hero='<div class="m-glw hw"><div class="m-tint"><div class="row"><span class="m-ic">'+msvg('card')+'</span>'+(L?'<button class="m-go" type="button" data-act="landtoggle" aria-expanded="'+open+'" aria-label="Projection de fin de mois">'+msvg('arrow')+'</button>':'')+'</div>'+
-      '<div><div class="m-lab">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</div><div class="m-foot"><div class="m-big" id="bal" data-v="'+D.solde+'">'+eur(D.solde)+'</div><div class="m-dots" aria-hidden="true"><i></i><i class="m"></i><i></i><i></i><i class="l"></i></div></div></div></div></div>';
-    var tTot=tot2!=null?'<div class="m-tile"><div class="m-head"><span class="m-ic">'+msvg('search')+'</span><span class="m-t">Total</span></div><div class="m-v"><span class="m-n">'+N2(tot2)+'</span><svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><g stroke="none"><circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="16" cy="16" r="1.6"/><circle cx="22" cy="12" r="2.4"/><circle cx="28" cy="16" r="1.6"/><circle cx="34" cy="7" r="1.6"/><circle cx="40" cy="16" r="1.6"/></g></svg></div></div>':'';
-    var tEp='<button class="m-tile" type="button" data-act="goep"><div class="m-head"><span class="m-ic">'+msvg('chart')+'</span><span class="m-t">'+(lv?'Épargne<br>totale':'Mis de côté')+'</span></div><div class="m-v"><span class="m-n">'+N2(epV)+'</span><svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><path d="M2 14c3-8 5-8 8 0s5 8 8 0 5-8 8 0 5 8 8 0 5-8 8 0" stroke-dasharray="2 3"/></svg></div></button>';
+      '<div><div class="m-lab">Solde '+(D.soldeEstime?'estimé':'aujourd’hui')+'</div><div class="m-foot"><div class="m-big" id="bal" data-v="'+D.solde+'" aria-label="'+esc(eur(D.solde))+'">'+kc(D.solde)+'</div>'+(dS.length>1?spark(dS,132,46,'m-hspark'):heroDots)+'</div></div></div></div>';
+    var decorTot='<svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><g stroke="none"><circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="9" r="1.6"/><circle cx="16" cy="16" r="1.6"/><circle cx="22" cy="12" r="2.4"/><circle cx="28" cy="16" r="1.6"/><circle cx="34" cy="7" r="1.6"/><circle cx="40" cy="16" r="1.6"/></g></svg>';
+    var tTot=tot2!=null?'<div class="m-tile"><div class="m-head"><span class="m-ic">'+msvg('search')+'</span><span class="m-t">Total</span></div><div class="m-v"><span class="m-n" aria-label="'+esc(eur(tot2))+'">'+N2(tot2)+'</span>'+(spark(totS,66,26)||decorTot)+'</div></div>':'';
+    var tEp='<button class="m-tile" type="button" data-act="goep"><div class="m-head"><span class="m-ic">'+msvg('chart')+'</span><span class="m-t">'+(lv?'Épargne<br>totale':'Mis de côté')+'</span></div><div class="m-v"><span class="m-n" aria-label="'+esc(eur(epV))+'">'+N2(epV)+'</span>'+(spark(epS,66,26)||'<svg class="m-mini" viewBox="0 0 44 22" aria-hidden="true"><path d="M2 14c3-8 5-8 8 0s5 8 8 0 5-8 8 0 5 8 8 0 5-8 8 0" stroke-dasharray="2 3"/></svg>')+'</div></button>';
     var bvv=null, blab=null; if(BR){ bvv=BR.match(/<b class="bv (neg|pos)">([^<]*)<\/b>/); blab=BR.match(/<span class="bl1"><span>([^<]*)<\/span><span class="sm">([^<]*)<\/span>/); }
-    var tBal=(BR&&bvv&&blab)?'<div class="m-tile m-span2"><div class="m-head"><span class="m-ic">'+msvg('trend')+'</span><span class="m-t" style="flex:1">'+blab[1]+'<br>'+blab[2]+'</span><button class="m-go dark" type="button" data-gr="bal" aria-label="Voir le graphique de balance">'+msvg('arrow')+'</button></div><div class="m-v"><span class="m-n '+(bvv[1]==='neg'?'m-neg':'m-pos')+'">'+bvv[2]+'</span><span class="m-dotsline" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>':'';
+    var tBal=(BR&&bvv&&blab)?'<div class="m-tile m-span2"><div class="m-head"><span class="m-ic">'+msvg('trend')+'</span><span class="m-t" style="flex:1">'+blab[1]+'<br>'+blab[2]+'</span><button class="m-go dark" type="button" data-gr="bal" aria-label="Voir le graphique de balance">'+msvg('arrow')+'</button></div><div class="m-v"><span class="m-n '+(bvv[1]==='neg'?'m-neg':'m-pos')+'" aria-label="'+esc(bvv[2])+'">'+(BRV!=null?(BRV<0?'':'+')+kc(BRV):bvv[2])+'</span>'+(spark(balS,92,28)||'')+'<span class="m-dotsline" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div></div>':'';
     var monName=MOIS_L[+D.today.month.slice(5,7)-1];
     return syncHead()+mtop(monName.charAt(0).toUpperCase()+monName.slice(1),{tools:mtools()})+syncNote()+hero+'<div class="m-grid seule">'+tTot+tEp+tBal+'</div>'+(proj?'<p class="m-cap">'+proj+'</p>':'')+(open?'<div class="m-card kdetail">'+landDetail(L)+'</div>':'')+freshLine()+(sub?'<div class="note">'+esc(sub)+'</div>':'')+(RNG()?'':chartInner()); }
   function homeScreen(){
@@ -520,6 +528,13 @@
     var list=S.f.sous? c.subs.filter(function(s){return s.n===S.f.sous}) : c.subs;
     return '<button class="back" data-act="clearposte" style="min-height:36px">'+ico(I.back)+esc(c.n)+' · retirer le filtre</button>'+compactCard(list,true);
   }
+  /* montant compact : 13877 devient 13,8K (centaines tronquées) ; en dessous de 1 000, le montant entier */
+  function kc(v){ if(S.hide) return '••••'; var n=Math.abs(v), sg=v<0?'−':''; if(n>=1000){ var t=Math.floor(n/100)/10; return sg+String(t).replace('.',',')+'K'; } return sg+Math.round(n); }
+  /* mini courbe d'une série (valeurs nulles ignorées) : trait fin, dernier point plein */
+  function spark(vals,w,h,cls){ var v=vals.filter(function(x){return x!=null&&!isNaN(x)}); if(v.length<2) return ''; var mn=Math.min.apply(null,v), mx=Math.max.apply(null,v), sp=mx-mn||1, pad=3, n=vals.length, pts=[], i, x, y;
+    for(i=0;i<n;i++){ if(vals[i]==null||isNaN(vals[i])) continue; x=pad+(w-2*pad)*i/(n-1); y=h-pad-(h-2*pad)*(vals[i]-mn)/sp; pts.push([x,y]); }
+    var d='M'+pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1)}).join('L'), l=pts[pts.length-1];
+    return '<svg class="'+(cls||'m-mini')+'" viewBox="0 0 '+w+' '+h+'" aria-hidden="true" style="width:'+w+'px;height:'+h+'px"><path d="'+d+'"/><circle cx="'+l[0].toFixed(1)+'" cy="'+l[1].toFixed(1)+'" r="2.6"/></svg>'; }
   /* montant en grand : partie entière puis centimes en petit, comme dans la maquette */
   function bigEur(v){ var t=eur(v,true), i=t.lastIndexOf(','); return i>0&&!S.hide?t.slice(0,i)+'<small>'+t.slice(i)+'</small>':t; }
   function opIcon(cat,amt){ var c=String(cat||'').toLowerCase(); if(amt>0) return 'in'; if(/course|aliment/.test(c)) return 'bag'; if(/loisir|sortie/.test(c)) return 'game'; if(/imp[oô]t|taxe/.test(c)) return 'gov'; if(/logement|loyer/.test(c)) return 'home'; if(/abonn|télécom|telecom/.test(c)) return 'repeat'; if(/sant[eé]/.test(c)) return 'flask'; if(/[eé]nergie|[eé]lectr/.test(c)) return 'bolt'; if(/mouvement|virement|épargne|epargne/.test(c)) return 'up'; return 'card'; }
@@ -968,7 +983,7 @@
     app.querySelectorAll('.hscroll').forEach(function(h){ h.scrollLeft=(S.hsKey===h.dataset.hs&&S.hsPos!=null)?S.hsPos:h.scrollWidth; });
     var fill=function(){ app.querySelectorAll('.bar i,.strack i,.pvis i,.pbar i').forEach(function(el){ if(!(fx&&!reduce)) el.style.transition='none'; el.style.width=el.dataset.w+'%'; }); };
     if(fx&&!reduce) requestAnimationFrame(function(){requestAnimationFrame(fill)}); else fill();
-    var b=document.getElementById('bal'); if(b&&D&&!reduce&&!S.hide&&S.first){ var t0=performance.now(); (function tick(n){var k=Math.min((n-t0)/900,1),e=1-Math.pow(1-k,3);b.textContent=eur(D.solde*e);if(k<1)requestAnimationFrame(tick)})(t0); }
+    var b=document.getElementById('bal'); if(b&&D&&!reduce&&!S.hide&&S.first){ var t0=performance.now(); (function tick(n){var k=Math.min((n-t0)/900,1),e=1-Math.pow(1-k,3);b.textContent=kc(D.solde*e);if(k<1)requestAnimationFrame(tick)})(t0); }
     if(D) S.first=false;
     paintPanel();
   }
