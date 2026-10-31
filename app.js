@@ -59,7 +59,6 @@
     return '<div class="m-top">'+left+'<h2>'+esc(title)+(o.meta||'')+'</h2>'+(o.tools||'')+'</div>'; }
   function mtools(){ var spin=S.loading||S.refreshing, n=D?alertsList().filter(function(x){return x.k==='bad'||x.k==='warn'}).length:0;
     return '<div class="m-tools"><button class="m-round" type="button" data-act="theme" aria-label="'+(S.theme==='dark'?'Passer au thème clair':'Passer au thème sombre')+'">'+msvg(S.theme==='dark'?'sun':'moon')+'</button>'+
-      (D?'<button class="m-round'+(spin?' spin':'')+'" type="button" data-act="refresh" aria-label="Actualiser'+(S.stale&&D?', chiffres du '+esc(fmtDate(D.stats.lastRealDate)):'')+'">'+msvg('sync')+(S.stale&&!spin?'<span class="dot stale" style="position:absolute;top:9px;right:9px"></span>':'')+'</button>':'')+
       (D?'<button class="m-round" type="button" data-act="alerts" aria-label="Alertes'+(n?', '+n:'')+'">'+msvg('bell')+(n?'<span class="m-badge">'+n+'</span>':'')+'</button>':'')+'</div>'; }
   /* ---------- données ---------- */
   function avgOf(h,k){ var a=h.slice(-k); return a.length? a.reduce(function(s,v){return s+v},0)/a.length : 0; }
