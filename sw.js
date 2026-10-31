@@ -1,7 +1,7 @@
-// build 2026-10-31-design-verre
+// build 2026-10-31-design-verre-complet
 // Cache d'abord (ouverture instantanée), puis mise à jour en arrière-plan pour le prochain lancement.
 var CACHE = 'banque-shell';
-var SHELL = ['./', 'index.html', 'style.css', 'app.js', 'lib.js', 'google.js', 'lock.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'fonts/sora-latin.woff2'];
+var SHELL = ['./', 'index.html', 'style.css', 'design.css', 'app.js', 'lib.js', 'google.js', 'lock.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'fonts/sora-latin.woff2', 'fonts/outfit-latin.woff2'];
 self.addEventListener('install', function (e) { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); })); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', function (e) {
