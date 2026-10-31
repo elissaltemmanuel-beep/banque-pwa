@@ -9,7 +9,7 @@
   /* barre d'état du téléphone : de la couleur du fond, claire ou sombre selon le thème, au lieu d'une bande noire */
   function barColor(){ var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content',S.theme==='dark'?'#6D6C70':'#FFFFFF'); }
   /* ---------- design verre : fond ambre, maillage de la carte du haut et grain, calculés une seule fois puis gardés ---------- */
-  (function(){ var root=document.documentElement, K='banque-design-v3', C=null;
+  (function(){ var root=document.documentElement, K='banque-design-v4', C=null;
     try{ C=JSON.parse(localStorage.getItem(K)||'null'); }catch(e){}
     function put(c){ root.style.setProperty('--scene',c.scene); root.style.setProperty('--hero',c.hero); root.style.setProperty('--noise',c.noise); }
     if(C&&C.scene&&C.hero&&C.noise){ put(C); return; }
@@ -27,7 +27,7 @@
       var i; /* grain fin */
       var nc=document.createElement('canvas'); nc.width=nc.height=96; var nx=nc.getContext('2d'), nd=nx.createImageData(96,96), v; for(i=0;i<nd.data.length;i+=4){ v=Math.random()<.5?255:0; nd.data[i]=nd.data[i+1]=nd.data[i+2]=v; nd.data[i+3]=Math.round(Math.random()*11); }
       nx.putImageData(nd,0,0); var noise='linear-gradient(transparent,transparent),url('+nc.toDataURL('image/png')+') 0 0/96px 96px';
-      C={scene:'url(bg.jpg?v=3)',hero:hero,noise:noise}; put(C); try{ localStorage.setItem(K,JSON.stringify(C)); }catch(e){}
+      C={scene:'url(bg.jpg?v=4)',hero:hero,noise:noise}; put(C); try{ localStorage.setItem(K,JSON.stringify(C)); }catch(e){}
     }catch(e){}
   })();
   document.documentElement.setAttribute('data-theme',S.theme); barColor();
