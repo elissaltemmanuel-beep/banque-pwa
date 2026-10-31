@@ -1,4 +1,4 @@
-// build 2026-10-31-vagues
+// build 2026-10-31-marges-courbes
 // Cache d'abord (ouverture instantanée), puis mise à jour en arrière-plan pour le prochain lancement.
 var CACHE = 'banque-shell';
 var SHELL = ['./', 'index.html', 'style.css', 'design.css', 'app.js', 'lib.js', 'google.js', 'lock.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'fonts/sora-latin.woff2', 'fonts/outfit-latin.woff2', 'bg.jpg'];

@@ -342,3 +342,17 @@ html body .fchip[aria-pressed="true"]{background:var(--ink)!important;color:var(
 .m-hspark .end{fill:#fff;filter:drop-shadow(0 0 4px rgba(255,255,255,.55))}
 .m-v svg.m-mini{opacity:.9}
 .m-tile.m-span2 .m-v svg.mb{margin-left:auto}
+/* chiffre du Total en gras ; courbes et montants à distance des bords (coins galbés) */
+.m-tile .m-n.m-nb{font-weight:600}
+.m-tile:not(.m-span2){padding:21px 22px 26px}
+.m-tile:not(.m-span2) .m-v{padding-right:6px;gap:10px}
+.m-tile.m-span2{padding:20px 30px 26px}
+.m-tile.m-span2 .m-v{padding-right:4px}
+.m-tint{padding:22px 24px 30px}
+.m-tint .m-foot{padding-right:6px}
+.m-hspark{margin-bottom:8px;margin-right:6px}
+.m-v svg.m-mini{margin-bottom:2px}
+/* les courbes des petites tuiles se réduisent plutôt que de toucher le bord */
+.m-tile:not(.m-span2) .m-v{gap:8px;align-items:flex-end}
+.m-tile:not(.m-span2) .m-v svg{flex:0 1 56px;min-width:0;width:56px!important;height:auto!important;max-height:30px;margin-right:2px}
+.m-tile:not(.m-span2) .m-n{flex:none}
