@@ -411,3 +411,7 @@ html body .screen{padding-bottom:150px!important}
 
 .m-bc{height:150px!important}
 .m-card.kchart .m-sub{font-size:13px}
+
+/* carte Balance : graphique plus grand, calé en bas à droite sur la ligne du montant */
+.m-tile.m-span2 .m-v{align-items:flex-end}
+.m-tile.m-span2 .m-v svg.mb{width:168px!important;height:72px!important;margin:0 0 -6px auto!important;opacity:1;flex:none}
