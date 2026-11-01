@@ -420,3 +420,7 @@ html body .screen{padding-bottom:150px!important}
 .m-card.kchart>h3{margin:8px 0 0!important}
 .m-card.kchart>.m-sub{margin:0 0 2px!important}
 .m-card.kchart>.m-gc{margin-top:0}
+
+/* carte Balance : hauteur d'origine ; le montant est aligné sur l'horizontale (ligne zéro) du graphique */
+.m-tile.m-span2 .m-v svg.mb{width:168px!important;height:48px!important;margin:0 0 0 auto!important}
+.m-tile.m-span2 .m-v.zmid{align-items:center!important}
