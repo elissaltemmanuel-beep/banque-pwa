@@ -386,3 +386,15 @@ html body .prow .ptop.ec .psm b,html body .prow .ptop.ec .psm span{font-weight:4
 :root[data-theme="dark"] .m-nav>button{border-color:rgba(255,255,255,.18)!important;background:linear-gradient(150deg,rgba(255,255,255,.18),rgba(255,255,255,.06))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 22px rgba(0,0,0,.35)!important}
 :root[data-theme="dark"] .m-nav>button.t[aria-current="page"]{background:#f6f2f3!important;color:#1d1a24!important}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .m-nav>button{border-color:rgba(255,255,255,.18)!important;background:linear-gradient(150deg,rgba(255,255,255,.18),rgba(255,255,255,.06))!important}:root:not([data-theme="light"]) .m-nav>button.t[aria-current="page"]{background:#f6f2f3!important;color:#1d1a24!important}}
+/* v2 : piste de verre commune, ronds qui se chevauchent, gris translucide comme la maquette */
+.m-nav{gap:0!important;padding:4px!important;border-radius:999px!important;width:auto!important;max-width:calc(100vw - 20px);pointer-events:auto;
+  background:linear-gradient(160deg,rgba(255,255,255,.35),rgba(120,125,135,.14))!important;border:1px solid rgba(255,255,255,.55);
+  -webkit-backdrop-filter:blur(22px) saturate(1.4);backdrop-filter:blur(22px) saturate(1.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 12px 30px rgba(40,50,90,.18)!important}
+.m-nav>button{width:62px;height:62px;margin-left:-5px!important;border:1px solid rgba(255,255,255,.55)!important;color:#3a3a42!important;
+  background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.28),rgba(120,125,135,.20))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+.m-nav>button:first-child{margin-left:0!important}
+.m-nav>button svg{stroke-width:1.2}
+.m-nav>button.t[aria-current="page"]{z-index:2;background:#fff!important;color:#17151a!important;box-shadow:0 6px 16px rgba(40,50,90,.22)!important}
+:root[data-theme="dark"] .m-nav{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.04))!important;border-color:rgba(255,255,255,.16)}
+:root[data-theme="dark"] .m-nav>button{color:#e9e6ea!important;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.16),rgba(255,255,255,.06))!important;border-color:rgba(255,255,255,.16)!important}
+:root[data-theme="dark"] .m-nav>button.t[aria-current="page"]{background:#f6f2f3!important;color:#1d1a24!important}
