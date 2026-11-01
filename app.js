@@ -184,7 +184,7 @@
   /* ---------- graphiques de la maquette : courbe lissée du solde et colonnes en traits fins ---------- */
   function kfm(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000?(Math.round(x/100)/10).toString().replace('.',',')+'K':String(Math.round(x))); }
   function mcourbe(vals,labs,keys,sel,projV,aria){
-    var W=320,H=236,L=34,R=14,T=30,B=30, ys=[],lb=[],ky=[],i,real=[];
+    var W=320,H=222,L=34,R=14,T=22,B=30, ys=[],lb=[],ky=[],i,real=[];
     for(i=0;i<vals.length;i++){ ys.push(vals[i]); lb.push(labs[i]); ky.push(keys[i]); }
     var hasProj=projV!=null; if(hasProj){ ys.push(projV); lb.push('fin'); ky.push(null); }
     var n=ys.length, nums=ys.filter(function(v){return v!=null}); if(!nums.length) return '';

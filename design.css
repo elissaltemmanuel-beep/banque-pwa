@@ -415,3 +415,8 @@ html body .screen{padding-bottom:150px!important}
 /* carte Balance : graphique plus grand, calé en bas à droite sur la ligne du montant */
 .m-tile.m-span2 .m-v{align-items:flex-end}
 .m-tile.m-span2 .m-v svg.mb{width:168px!important;height:72px!important;margin:0 0 -6px auto!important;opacity:1;flex:none}
+/* carte graphique : titre, texte et graphique rapprochés */
+.m-card.kchart{gap:4px!important}
+.m-card.kchart>h3{margin:8px 0 0!important}
+.m-card.kchart>.m-sub{margin:0 0 2px!important}
+.m-card.kchart>.m-gc{margin-top:0}
