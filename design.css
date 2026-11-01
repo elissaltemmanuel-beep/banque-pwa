@@ -419,3 +419,6 @@ html body .prow .ptop.ec .psm b,html body .prow .ptop.ec .psm span{font-weight:4
 :root[data-theme="dark"] .m-nav::before{background:rgba(60,58,66,.55)!important;border-color:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .m-nav>button{background:linear-gradient(180deg,rgba(90,88,98,.6),rgba(60,58,68,.6))!important;border-color:rgba(255,255,255,.2)!important;color:#eee!important}
 :root[data-theme="dark"] .m-nav>button.t[aria-current="page"]{background:#f6f2f3!important;color:#1d1a24!important}
+/* v4.1 : barre plus haute */
+.m-nav{bottom:calc(58px + env(safe-area-inset-bottom,0px))!important}
+html body .screen{padding-bottom:150px!important}
