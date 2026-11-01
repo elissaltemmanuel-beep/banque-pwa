@@ -408,3 +408,6 @@ html body .screen{padding-bottom:150px!important}
 .m-nav::after{filter:none!important}
 .m-nav>button:not(.t[aria-current="page"]){box-shadow:inset 0 1.2px 0 rgba(255,255,255,.7)!important}
 .m-nav>button.m-fab,.m-nav .m-fab{width:60px!important;height:60px!important;margin:0!important;border-radius:50%!important}
+
+.m-bc{height:150px!important}
+.m-card.kchart .m-sub{font-size:13px}

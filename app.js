@@ -184,7 +184,7 @@
   /* ---------- graphiques de la maquette : courbe lissée du solde et colonnes en traits fins ---------- */
   function kfm(v){ var s=v<0?'−':'', x=Math.abs(v); return s+(x>=1000?(Math.round(x/100)/10).toString().replace('.',',')+'K':String(Math.round(x))); }
   function mcourbe(vals,labs,keys,sel,projV,aria){
-    var W=320,H=262,L=34,R=14,T=48,B=34, ys=[],lb=[],ky=[],i,real=[];
+    var W=320,H=236,L=34,R=14,T=30,B=30, ys=[],lb=[],ky=[],i,real=[];
     for(i=0;i<vals.length;i++){ ys.push(vals[i]); lb.push(labs[i]); ky.push(keys[i]); }
     var hasProj=projV!=null; if(hasProj){ ys.push(projV); lb.push('fin'); ky.push(null); }
     var n=ys.length, nums=ys.filter(function(v){return v!=null}); if(!nums.length) return '';
@@ -214,7 +214,7 @@
     return o+'</svg>'; }
   function mbars(vals,labs,keys,sel,curIdx,projV,aria){
     var nums=vals.filter(function(v){return v!=null}).concat(projV!=null?[projV]:[]), mx=Math.max.apply(null,nums.concat([1])), o='<div class="m-bc" role="img" aria-label="'+esc(aria)+'">', i;
-    for(i=0;i<vals.length;i++){ var v=vals[i], isCur=sel>=0?i===sel:i===curIdx, shown=(i===curIdx&&projV!=null)?projV:v, h=Math.max(Math.abs(shown==null?0:shown)/mx*100,2);
+    for(i=0;i<vals.length;i++){ var v=vals[i], isCur=sel>=0?i===sel:i===curIdx, shown=(i===curIdx&&projV!=null)?projV:v, h=Math.max(Math.abs(shown==null?0:shown)/mx*112,2);
       o+='<div class="m-bcm'+(isCur?' cur':'')+'"'+(keys[i]?' data-bar="'+keys[i]+'" role="button" aria-label="'+esc(labs[i])+'" style="cursor:pointer"':'')+'><em>'+((isCur||i===curIdx)&&shown!=null&&!S.hide?kfm(shown):'')+'</em><i style="height:'+h.toFixed(0)+'px;'+(i===curIdx&&projV!=null?'opacity:.6':'')+'"></i><span>'+esc(labs[i])+'</span></div>'; }
     return o+'</div>'; }
   /* ---------- graphique de l'accueil ---------- */
@@ -278,10 +278,10 @@
       if(avgV!=null&&!balMode) g+='<line x1="10" x2="'+(VW-10)+'" y1="'+Y(avgV,mx)+'" y2="'+Y(avgV,mx)+'" stroke="var(--muted)" stroke-opacity=".5" stroke-width="1" stroke-dasharray="3 4" pointer-events="none"/>';
       var vals0=vals.slice(); vals=known;
       var nz=vals.filter(function(v){return v>0}), mean=nz.length? sum(nz)/nz.length : 0;
-      sum_= poste? ('Dépenses mensuelles '+(String(poste.id).slice(0,2)==='m|'?'de ce marchand':'du poste')+'. Moyenne sur la période : '+eur(mean)+' par mois, total '+eur(sum(vals))+'.')
-        : gr==='solde'? 'Solde en fin de chaque mois.'+(projV!=null?' Fin de ce mois : '+eur(P.value)+(P.salary.expected>0?', paie attendue vers le '+P.salary.day+' comprise':'')+'.'+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' Le point le plus bas, juste avant la paie, est de '+eur(P.landing.value)+' au '+fmtDate(P.landing.date)+'.':''):'')
-        : gr==='bal'? 'Balance de chaque mois : revenus moins dépenses, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'')
-        : (gr==='dep'?'Dépenses':'Revenus')+' de chaque mois, '+eur(sum(vals))+' au total sur la période.'+(projV!=null?' Le contour en pointillés montre la projection de fin de mois.':'');
+      sum_= poste? ('Moyenne '+eur(mean)+' par mois · total '+eur(sum(vals)))
+        : gr==='solde'? (projV!=null?'Fin de mois : '+eur(P.value)+(P.landing&&P.landing.days>0&&P.landing.date.slice(0,7)===D.today.month?' · point bas '+eur(P.landing.value)+' le '+fmtDate(P.landing.date):''):'')
+        : gr==='bal'? 'Total '+eur(sum(vals))+' sur la période'
+        : 'Total '+eur(sum(vals))+' sur la période';
       aria='Barres mensuelles : '+name; svg=g; leg=sq('var(--neu)','Autres mois')+sq(col,PR.isYear?name:'Mois choisi')+(avgV!=null?'<span><i style="display:inline-block;width:16px;border-top:1px dashed var(--muted);vertical-align:middle;margin-right:5px"></i>Moyenne '+kv(avgV)+'</span>':'')+'';
     }
     sum_=sum_.replace(/\.{2,}/g,'.');
