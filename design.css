@@ -390,3 +390,11 @@ html body .prow .ptop.ec .psm b,html body .prow .ptop.ec .psm span{font-weight:4
 :root[data-theme="dark"] .m-nav>button{color:#eee!important;background:rgba(255,255,255,.06)!important;box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.18)!important}
 :root[data-theme="dark"] .m-nav>button.t[aria-current="page"]{background:#f6f2f3!important;color:#1d1a24!important}
 html body .screen{padding-bottom:150px!important}
+/* v5 : vrai verre dépoli — fond très translucide, flou fort, contenu visible derrière */
+.m-nav::before{background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(130,134,145,.14))!important;-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6)}
+.m-nav::after{background:rgba(255,255,255,.55)!important}
+.m-nav>button{background:radial-gradient(circle at 50% 22%,rgba(255,255,255,.34),rgba(255,255,255,.06) 70%)!important;box-shadow:inset 0 0 0 1.2px rgba(255,255,255,.6),inset 0 1.5px 0 rgba(255,255,255,.85)!important}
+.m-nav>button.t[aria-current="page"]{background:rgba(255,255,255,.96)!important}
+:root[data-theme="dark"] .m-nav::before{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04))!important}
+:root[data-theme="dark"] .m-nav::after{background:rgba(255,255,255,.18)!important}
+:root[data-theme="dark"] .m-nav>button{background:radial-gradient(circle at 50% 22%,rgba(255,255,255,.18),rgba(255,255,255,.03) 70%)!important}
