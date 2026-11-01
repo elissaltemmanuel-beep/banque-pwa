@@ -398,3 +398,12 @@ html body .prow .ptop.ec .psm b,html body .prow .ptop.ec .psm span{font-weight:4
 :root[data-theme="dark"] .m-nav{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.04))!important;border-color:rgba(255,255,255,.16)}
 :root[data-theme="dark"] .m-nav>button{color:#e9e6ea!important;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.16),rgba(255,255,255,.06))!important;border-color:rgba(255,255,255,.16)!important}
 :root[data-theme="dark"] .m-nav>button.t[aria-current="page"]{background:#f6f2f3!important;color:#1d1a24!important}
+/* v3 : plus de capsule pleine ; seul un pont de verre relie les ronds ; décollé des bords */
+.m-nav{background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding:0!important;bottom:calc(30px + env(safe-area-inset-bottom,0px))!important}
+.m-nav::before{content:"";position:absolute;left:30px;right:30px;top:50%;height:34px;transform:translateY(-50%);border-radius:18px;z-index:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.4),rgba(120,125,135,.2));border:1px solid rgba(255,255,255,.5);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.m-nav>button{width:56px;height:56px;margin-left:-4px!important;z-index:1}
+.m-nav>button svg{width:24px;height:24px}
+:root[data-theme="dark"] .m-nav::before{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border-color:rgba(255,255,255,.14)}
+.m-nav::before{left:28px;right:28px;height:36px;background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(120,125,135,.26))}
+.m-nav>button{margin-left:6px!important}.m-nav>button:first-child{margin-left:0!important}
